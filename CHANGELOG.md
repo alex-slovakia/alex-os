@@ -3,7 +3,7 @@
 ## 0.1.1 — 2026-08-20
 
 - Added the required rationale to the desktop-only OAuth import directive.
-- Renamed the top settings heading to follow Obsidian Community guidelines.
+- Removed the redundant top settings heading to follow Obsidian Community guidelines.
 
 ## 0.1.0 — 2026-08-20
 
