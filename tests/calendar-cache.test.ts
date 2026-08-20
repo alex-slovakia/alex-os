@@ -4,10 +4,12 @@ import {
   cacheCovers,
   calendarCacheGeneration,
   calendarCacheNeedsWrite,
+  calendarCachePathMatches,
   calendarCachesSemanticallyEqual,
   CalendarCacheStore,
   isCalendarCache,
   isCalendarCacheFresh,
+  normalizeCalendarCachePath,
   sanitizeCalendarCache,
 } from "../src/calendar/cache";
 
@@ -129,5 +131,81 @@ describe("calendar cache", () => {
       cache: null,
       error: "Calendar cache could not be read.",
     });
+  });
+
+  it("matches only the configured cache file for create, modify, and rename events", () => {
+    const configured = "00 System\\Alex OS\\Cache\\Calendar.json";
+
+    expect(calendarCachePathMatches(configured, "00 System/Alex OS/Cache/Calendar.json")).toBe(true);
+    expect(calendarCachePathMatches(configured, "Archive/Calendar.json")).toBe(false);
+    expect(calendarCachePathMatches(
+      configured,
+      "Archive/Calendar.json",
+      "00 System/Alex OS/Cache/Calendar.json",
+    )).toBe(true);
+  });
+
+  it("ignores an oversized cache before parsing it on memory-constrained devices", async () => {
+    const store = new CalendarCacheStore({
+      exists: async () => true,
+      mkdir: async () => undefined,
+      read: async () => "x".repeat(2 * 1024 * 1024 + 1),
+      write: async () => undefined,
+    }, "Calendar.json");
+
+    await expect(store.readResult()).resolves.toEqual({
+      cache: null,
+      error: "Calendar cache is too large and was ignored.",
+    });
+  });
+
+  it("uses adapter metadata to reject an oversized cache before reading it", async () => {
+    let reads = 0;
+    const store = new CalendarCacheStore({
+      exists: async () => true,
+      stat: async () => ({ type: "file", ctime: 0, mtime: 0, size: 2 * 1024 * 1024 + 1 }),
+      mkdir: async () => undefined,
+      read: async () => {
+        reads += 1;
+        return "must not be read";
+      },
+      write: async () => undefined,
+    }, "Calendar.json");
+
+    await expect(store.readResult()).resolves.toEqual({
+      cache: null,
+      error: "Calendar cache is too large and was ignored.",
+    });
+    expect(reads).toBe(0);
+  });
+
+  it("refuses to write a cache that the mobile reader would reject", async () => {
+    let writes = 0;
+    const store = new CalendarCacheStore({
+      exists: async () => true,
+      mkdir: async () => undefined,
+      read: async () => "",
+      write: async () => { writes += 1; },
+    }, "Calendar.json");
+    const oversized: CalendarCache = {
+      ...validCache(),
+      events: [{
+        ...validCache().events[0]!,
+        title: "x".repeat(2 * 1024 * 1024),
+      }],
+    };
+
+    await expect(store.write(oversized)).rejects.toThrow("Calendar cache exceeds the safe size limit.");
+    expect(writes).toBe(0);
+  });
+
+  it("rejects cache paths that can escape or overwrite protected vault data", () => {
+    expect(normalizeCalendarCachePath("C:\\Users\\Example\\Calendar.json")).toBe("");
+    expect(normalizeCalendarCachePath("Home.md:calendar-cache")).toBe("");
+    expect(normalizeCalendarCachePath(".obsidian/plugins/alex-os/data.json")).toBe("");
+    expect(normalizeCalendarCachePath("https://example.com/Calendar.json")).toBe("");
+    expect(normalizeCalendarCachePath("00 System/Alex OS/Cache/Calendar.json")).toBe(
+      "00 System/Alex OS/Cache/Calendar.json",
+    );
   });
 });

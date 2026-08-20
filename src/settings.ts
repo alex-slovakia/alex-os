@@ -85,6 +85,27 @@ export class AlexOsSettingTab extends PluginSettingTab {
   private renderCalendarSettings(containerEl: HTMLElement): void {
     new Setting(containerEl).setName("Google Calendar").setHeading();
     const state = this.host.state.calendar;
+    if (!Platform.isDesktopApp) {
+      const cacheStatus = state.cache
+        ? `Cached from desktop · updated ${new Date(state.cache.syncedAt).toLocaleString()}`
+        : "Waiting for a reduced Calendar cache from a connected desktop.";
+      new Setting(containerEl)
+        .setName("Mobile Calendar cache")
+        .setDesc(cacheStatus)
+        .addButton((control) => {
+          control.setButtonText("Reload cache").onClick(async () => {
+            await this.host.refreshAll(false);
+            this.display();
+          });
+        });
+
+      const mobileBoundary = containerEl.createEl("div", { cls: "alex-os-settings-note" });
+      mobileBoundary.createEl("strong", { text: "Private mobile mode" });
+      mobileBoundary.createEl("p", {
+        text: "Connect and refresh Google Calendar on Obsidian Desktop, then synchronize this vault. Mobile reads only the reduced private cache; it never reads Desktop OAuth secrets or contacts Google."
+      });
+      return;
+    }
     const status = state.connected
       ? state.error
         ? `Connected · using cache (${state.error})`

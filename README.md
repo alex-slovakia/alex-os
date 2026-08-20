@@ -4,7 +4,7 @@
 
 ### Turn Home.md into your personal command center.
 
-A colorful, local-first dashboard for focus, projects, journaling, quick capture, inspiration, and optional read-only Google Calendar.
+A colorful, local-first dashboard for focus, projects, journaling, quick capture, inspiration, and an optional read-only Google Calendar view.
 
 [![Release](https://img.shields.io/github/v/release/alex-slovakia/alex-os?display_name=tag&sort=semver)](https://github.com/alex-slovakia/alex-os/releases)
 [![CI](https://github.com/alex-slovakia/alex-os/actions/workflows/ci.yml/badge.svg)](https://github.com/alex-slovakia/alex-os/actions/workflows/ci.yml)
@@ -27,43 +27,38 @@ A colorful, local-first dashboard for focus, projects, journaling, quick capture
 | Quick capture | New Markdown notes in your input folder |
 | Inspiration | One strict, user-editable Markdown note |
 | Recent activity | Useful recently modified vault notes |
-| Calendar | Optional read-only Google Calendar cache |
+| Calendar | Optional reduced Google Calendar cache |
 
-The dashboard is designed for keyboard use, light and dark themes, reduced motion, responsive desktop panes, and useful operation without any online service.
+Alex OS 0.2.0 implements the full local dashboard for Obsidian on desktop, iPhone, iPad, and Android. It supports light and dark themes, reduced motion, responsive layouts, and useful operation without an online service.
+
+Automated bundle and runtime tests cover mobile loading and Calendar cache behavior. Manual verification on physical iPhone, iPad, and Android devices remains pending in the release checklist.
 
 ## Privacy first
 
 - No analytics, advertisements, telemetry, or Alex OS server.
 - No live Notion connection.
 - Google Calendar is optional and requests only <code>calendar.readonly</code>.
-- OAuth credentials, refresh tokens, raw Calendar IDs, and sync tokens stay in device-local Obsidian SecretStorage.
-- Access tokens stay in memory.
+- On desktop, OAuth credentials, refresh tokens, raw Calendar IDs, and sync tokens stay in device-local Obsidian SecretStorage.
+- Desktop access tokens stay in memory.
+- Mobile never connects to Google or reads Calendar secrets from SecretStorage.
 - Only reduced event display data and hashed identifiers enter the optional vault cache.
+- The cache can contain user-controlled personal text such as event titles and locations. Treat it as private vault content on every synced device.
 
 Read the complete [privacy model](PRIVACY.md) and [security policy](SECURITY.md).
 
 ## 90-second quick start
 
-Alex OS is a desktop plugin because its secure Google OAuth callback uses a local Node.js loopback listener.
-
-1. Download <code>main.js</code>, <code>manifest.json</code>, and <code>styles.css</code> from the [latest release](https://github.com/alex-slovakia/alex-os/releases/latest).
-2. Create this folder inside your vault:
-
-   ~~~text
-   <Vault>/.obsidian/plugins/alex-os/
-   ~~~
-
-3. Put the three downloaded files directly in that folder.
-4. Reload Obsidian, open **Settings → Community plugins**, and enable **Alex OS**.
-5. Add this block to <code>Home.md</code>:
+1. Open **Settings → Community plugins → Browse**.
+2. Search for **Alex OS**, install it, and choose **Enable**.
+3. Add this block to <code>Home.md</code>:
 
    ~~~~markdown
    ```alex-os-dashboard
    ```
    ~~~~
 
-6. Open <code>Home.md</code> in Reading view.
-7. Open **Settings → Alex OS** and match the folder paths to your vault.
+4. Open <code>Home.md</code> in Reading view.
+5. Open **Settings → Alex OS** and match the folder paths to your vault.
 
 The dashboard gracefully hides modules whose source notes do not exist yet. Copy the starter notes from [examples](examples/) when you want the complete experience.
 
@@ -113,7 +108,11 @@ The inspiration source is ordinary Markdown. Import or curate your own short boo
 
 ## Optional Google Calendar
 
-Calendar setup is bring-your-own Google Cloud credentials. Alex OS opens a short-lived loopback callback, uses PKCE, stores durable secrets in Obsidian SecretStorage, and synchronizes a seven-day read-only window.
+Calendar setup and direct Google synchronization run only in desktop Obsidian. Alex OS uses bring-your-own Google Cloud credentials, a short-lived loopback callback, PKCE, and Obsidian SecretStorage.
+
+On iPhone, iPad, and Android, Alex OS reads the reduced Calendar cache from the vault. Your vault sync provider can carry that private cache from a connected desktop; Alex OS mobile never contacts Google.
+
+Visible calendars are selected on desktop before refresh. Mobile displays only the reduced private data that the desktop writes to the synchronized cache; it cannot change the Calendar selection.
 
 A Google account and permission to create a Google Cloud project are required only for this optional Calendar integration.
 
@@ -140,7 +139,7 @@ The check runs ESLint, strict TypeScript, a production esbuild bundle, and the f
 
 ## Community Plugins
 
-Alex OS is not yet listed in the Obsidian Community Plugins directory. Until submission and review are complete, install from GitHub Releases or BRAT.
+Alex OS is listed in the [Obsidian Community Plugins directory](https://community.obsidian.md/plugins/alex-os). GitHub Releases and BRAT remain available for manual or preview installation.
 
 ## License
 

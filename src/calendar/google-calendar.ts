@@ -288,8 +288,8 @@ function syncErrorSummary(errors: readonly CalendarSyncError[]): string | undefi
 }
 
 /**
- * Mobile-safe Calendar service. Only connect() enters the desktop-only loopback
- * OAuth path; cached reads, token refresh, and Calendar API requests use Obsidian APIs.
+ * Cross-platform Calendar service. Mobile is a read-only reduced-cache runtime;
+ * credentials, OAuth, token refresh, cache writes, and Google requests stay on Desktop.
  */
 export class CalendarService {
   private state: CalendarState = {
@@ -312,6 +312,8 @@ export class CalendarService {
   private tokenRefreshInFlight: Promise<string> | null = null;
   private connectInFlight: Promise<CalendarDescriptor[]> | null = null;
   private syncInFlight: Promise<CalendarSyncResult> | null = null;
+  private mobileReloadInFlight: Promise<CalendarSyncResult> | null = null;
+  private mobileReloadPending = false;
   private oauthController: AbortController | null = null;
   private lastSyncErrors: CalendarSyncError[] = [];
 
@@ -343,11 +345,15 @@ export class CalendarService {
 
   /** Reports whether the device-local Desktop OAuth credential is configured. */
   hasClientSecret(): boolean {
+    if (!this.isDesktop()) return false;
     return Boolean(this.readClientSecret());
   }
 
   /** Saves the Desktop OAuth credential without returning or exposing it. */
   setClientSecret(value: string): void {
+    if (!this.isDesktop()) {
+      throw new GoogleAuthenticationError("Manage Google Calendar credentials from Obsidian Desktop.");
+    }
     const clientSecret = value.trim();
     if (!clientSecret) {
       throw new GoogleAuthenticationError("Enter the Desktop OAuth client secret before saving.");
@@ -360,12 +366,16 @@ export class CalendarService {
 
   /** Removes the app credential and all authorization state without exposing either. */
   clearClientSecret(): void {
+    if (!this.isDesktop()) {
+      throw new GoogleAuthenticationError("Manage Google Calendar credentials from Obsidian Desktop.");
+    }
     this.operationGeneration += 1;
     this.authGeneration += 1;
     this.oauthController?.abort();
     this.oauthController = null;
     this.connectInFlight = null;
     this.syncInFlight = null;
+    this.mobileReloadPending = false;
     this.tokenRefreshInFlight = null;
     this.accessToken = null;
     this.lastSyncErrors = [];
@@ -398,11 +408,16 @@ export class CalendarService {
   }
 
   async initialize(): Promise<CalendarState> {
+    if (!this.isDesktop()) {
+      await this.reloadMobileCache();
+      return { ...this.state };
+    }
     await this.loadStoredState();
     return { ...this.state };
   }
 
   async loadCached(): Promise<CalendarCache | null> {
+    if (!this.isDesktop()) return (await this.reloadMobileCache()).cache;
     await this.loadStoredState();
     return this.state.cache;
   }
@@ -410,6 +425,11 @@ export class CalendarService {
   /** Desktop-only interactive authorization. Returns safe, hashed descriptors. */
   connect(): Promise<CalendarDescriptor[]> {
     if (this.disposed) return Promise.reject(new CalendarOperationCancelled());
+    if (!this.isDesktop()) {
+      return Promise.reject(
+        new GoogleAuthenticationError("Connect Google Calendar from Obsidian Desktop."),
+      );
+    }
     if (this.connectInFlight) return this.connectInFlight;
 
     this.operationGeneration += 1;
@@ -431,12 +451,22 @@ export class CalendarService {
   }
 
   disconnect(): void {
+    if (!this.isDesktop()) {
+      this.setState({
+        ...this.state,
+        phase: this.state.cache ? "cached" : "disconnected",
+        connected: false,
+        error: undefined,
+      });
+      return;
+    }
     this.operationGeneration += 1;
     this.authGeneration += 1;
     this.oauthController?.abort();
     this.oauthController = null;
     this.connectInFlight = null;
     this.syncInFlight = null;
+    this.mobileReloadPending = false;
     this.tokenRefreshInFlight = null;
     this.accessToken = null;
     this.lastSyncErrors = [];
@@ -460,6 +490,7 @@ export class CalendarService {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.mobileReloadPending = false;
     this.operationGeneration += 1;
     this.authGeneration += 1;
     this.oauthController?.abort();
@@ -474,6 +505,9 @@ export class CalendarService {
   /** Fetches calendars for a selection UI. Raw IDs are persisted only in SecretStorage. */
   async listCalendars(): Promise<CalendarDescriptor[]> {
     if (this.disposed) throw new CalendarOperationCancelled();
+    if (!this.isDesktop()) {
+      throw new GoogleAuthenticationError("Refresh Google Calendar from Obsidian Desktop.");
+    }
     const generation = this.operationGeneration;
     try {
       const calendars = await this.fetchCalendarList(generation);
@@ -500,6 +534,7 @@ export class CalendarService {
         errors: [{ message: "Calendar service is no longer active." }],
       });
     }
+    if (!this.isDesktop()) return this.reloadMobileCache();
     if (this.connectInFlight) return Promise.resolve({ cache: this.state.cache, errors: [] });
     if (this.syncInFlight) return this.syncInFlight;
 
@@ -512,27 +547,55 @@ export class CalendarService {
     return operation;
   }
 
+  private reloadMobileCache(): Promise<CalendarSyncResult> {
+    this.mobileReloadPending = true;
+    if (this.mobileReloadInFlight) return this.mobileReloadInFlight;
+
+    const operation = this.drainMobileCacheReloads();
+    this.mobileReloadInFlight = operation;
+    void operation.finally(() => {
+      if (this.mobileReloadInFlight === operation) this.mobileReloadInFlight = null;
+    }).catch(() => undefined);
+    return operation;
+  }
+
+  private async drainMobileCacheReloads(): Promise<CalendarSyncResult> {
+    while (this.mobileReloadPending && !this.disposed) {
+      this.mobileReloadPending = false;
+      await this.loadStoredState();
+    }
+    return {
+      cache: this.state.cache,
+      errors: this.state.error ? [{ message: this.state.error }] : [],
+    };
+  }
+
   private async loadStoredState(): Promise<void> {
     if (this.disposed) return;
     const generation = this.operationGeneration;
+    const previousCache = this.state.cache;
     let cache: CalendarCache | null = null;
     const errors: string[] = [];
 
     try {
       const result = await this.cacheStore().readResult();
-      cache = result.cache;
+      cache = result.cache ?? (result.error ? previousCache : null);
       if (result.error) errors.push(result.error);
     } catch {
+      cache = previousCache;
       errors.push("Calendar cache could not be read.");
     }
     if (!this.isCurrent(generation)) return;
 
-    let connected = Boolean(this.accessToken);
-    try {
-      const secrets = this.readSecrets();
-      connected = connected || Boolean(this.readClientSecret() && secrets.refreshToken);
-    } catch (error) {
-      errors.push(safeErrorMessage(error, "Secure calendar storage could not be read."));
+    let connected = false;
+    if (this.isDesktop()) {
+      connected = Boolean(this.accessToken);
+      try {
+        const secrets = this.readSecrets();
+        connected = connected || Boolean(this.readClientSecret() && secrets.refreshToken);
+      } catch (error) {
+        errors.push(safeErrorMessage(error, "Secure calendar storage could not be read."));
+      }
     }
     if (!this.isCurrent(generation)) return;
 
@@ -659,6 +722,15 @@ export class CalendarService {
       const previous = cacheRead.cache;
       displayCache = previous ?? fallbackCache;
       if (previous) this.availableCalendars = cloneDescriptors(previous.calendars);
+      if (cacheRead.error) {
+        return this.finishFailedSync(
+          generation,
+          checkedAt,
+          displayCache,
+          [{ message: "Calendar cache could not be read safely; existing content was preserved." }],
+          this.state.connected,
+        );
+      }
 
       const secrets = this.readSecrets();
       this.assertCurrent(generation);

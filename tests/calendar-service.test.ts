@@ -5,6 +5,13 @@ vi.mock("../src/calendar/obsidian-adapter", () => ({
   obsidianCalendarRequest: vi.fn(),
 }));
 
+vi.mock("../src/calendar/oauth", () => ({
+  authorizeInstalledApp: vi.fn(async () => {
+    throw new Error("Test must inject the interactive authorizer.");
+  }),
+  GOOGLE_TOKEN_ENDPOINT: "https://oauth2.googleapis.com/token",
+}));
+
 import type { App, RequestUrlParam, RequestUrlResponse } from "obsidian";
 import type { AlexOsSettings, CalendarCache } from "../src/types";
 import {
@@ -50,6 +57,7 @@ interface HarnessControls {
   failSecretRead: boolean;
   failSecretWrite: boolean;
   cacheWrites: number;
+  secretReads: number;
   secretWrites: number;
   operations: string[];
 }
@@ -77,6 +85,7 @@ function createHarness(): CalendarHarness {
     failSecretRead: false,
     failSecretWrite: false,
     cacheWrites: 0,
+    secretReads: 0,
     secretWrites: 0,
     operations: [],
   };
@@ -99,6 +108,7 @@ function createHarness(): CalendarHarness {
     },
     secretStorage: {
       getSecret: (key: string) => {
+        controls.secretReads += 1;
         if (controls.failSecretRead) throw new Error("secret read failed");
         return secrets.get(key) ?? null;
       },
@@ -602,6 +612,231 @@ describe("CalendarService sync", () => {
     });
     expect(secretService.getState().error).toContain("Secure calendar storage");
     expect(secretService.getAvailableCalendars()).toEqual(cached.calendars);
+  });
+
+  it("never overwrites an existing invalid cache path during desktop sync", async () => {
+    const harness = createHarness();
+    const existingContent = "This is an unrelated user file.";
+    harness.files.set(CACHE_PATH, existingContent);
+    const request = vi.fn(async (): Promise<RequestUrlResponse> => {
+      throw new Error("Google must not run while the cache path is unsafe.");
+    });
+    const service = new CalendarService(harness.app, settings(), { request });
+    await service.initialize();
+
+    const result = await service.sync();
+
+    expect(result.errors).toEqual([{ message: "Calendar cache could not be read safely; existing content was preserved." }]);
+    expect(harness.files.get(CACHE_PATH)).toBe(existingContent);
+    expect(harness.controls.cacheWrites).toBe(0);
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("loads the reduced cache on mobile without touching SecretStorage or Google", async () => {
+    const harness = createHarness();
+    const calendarId = await hashCalendarIdentifier(WORK_RAW_ID);
+    const cached: CalendarCache = {
+      schemaVersion: 1,
+      syncedAt: "2026-08-20T10:00:00.000Z",
+      rangeStart: "2026-08-19T22:00:00.000Z",
+      rangeEnd: "2026-08-26T22:00:00.000Z",
+      calendars: [{ id: calendarId, name: "Work", color: "#3367d6" }],
+      events: [],
+    };
+    harness.files.set(CACHE_PATH, JSON.stringify(cached));
+    harness.controls.failSecretRead = true;
+    const request = vi.fn(async (): Promise<RequestUrlResponse> => {
+      throw new Error("Mobile must not contact Google.");
+    });
+    const service = new CalendarService(harness.app, settings(), {
+      isDesktop: () => false,
+      request,
+    });
+
+    await expect(service.initialize()).resolves.toEqual({
+      phase: "cached",
+      connected: false,
+      cache: cached,
+    });
+    expect(service.getAvailableCalendars()).toEqual(cached.calendars);
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("reloads a newly synced cache on mobile without network or storage writes", async () => {
+    const harness = createHarness();
+    const calendarId = await hashCalendarIdentifier(WORK_RAW_ID);
+    const first: CalendarCache = {
+      schemaVersion: 1,
+      syncedAt: "2026-08-20T10:00:00.000Z",
+      rangeStart: "2026-08-19T22:00:00.000Z",
+      rangeEnd: "2026-08-26T22:00:00.000Z",
+      calendars: [{ id: calendarId, name: "Work", color: "#3367d6" }],
+      events: [],
+    };
+    const updated: CalendarCache = {
+      ...first,
+      syncedAt: "2026-08-20T10:05:00.000Z",
+      events: [{
+        id: "hashed-event",
+        title: "Updated planning",
+        start: "2026-08-20T12:00:00+02:00",
+        end: "2026-08-20T13:00:00+02:00",
+        allDay: false,
+        calendarId,
+        calendarName: "Work",
+        color: "#3367d6",
+        status: "confirmed",
+      }],
+    };
+    harness.files.set(CACHE_PATH, JSON.stringify(first));
+    harness.controls.failSecretRead = true;
+    const request = vi.fn(async (): Promise<RequestUrlResponse> => {
+      throw new Error("Mobile must not contact Google.");
+    });
+    const service = new CalendarService(harness.app, settings(), {
+      isDesktop: () => false,
+      request,
+    });
+    await service.initialize();
+    harness.files.set(CACHE_PATH, JSON.stringify(updated));
+
+    await expect(service.sync(true)).resolves.toEqual({ cache: updated, errors: [] });
+    expect(service.getState()).toEqual({ phase: "cached", connected: false, cache: updated });
+    expect(request).not.toHaveBeenCalled();
+    expect(harness.controls.cacheWrites).toBe(0);
+    expect(harness.controls.secretWrites).toBe(0);
+  });
+
+  it("serializes mobile cache reads and drains a refresh that arrives during a read", async () => {
+    const harness = createHarness();
+    const calendarId = await hashCalendarIdentifier(WORK_RAW_ID);
+    const first: CalendarCache = {
+      schemaVersion: 1,
+      syncedAt: "2026-08-20T10:00:00.000Z",
+      rangeStart: "2026-08-19T22:00:00.000Z",
+      rangeEnd: "2026-08-26T22:00:00.000Z",
+      calendars: [{ id: calendarId, name: "Work", color: "#3367d6" }],
+      events: [],
+    };
+    const updated: CalendarCache = {
+      ...first,
+      syncedAt: "2026-08-20T10:05:00.000Z",
+    };
+    harness.files.set(CACHE_PATH, JSON.stringify(first));
+    const service = new CalendarService(harness.app, settings(), {
+      isDesktop: () => false,
+    });
+    await service.initialize();
+
+    const firstRead = deferred<string>();
+    let reads = 0;
+    const adapter = harness.app.vault.adapter as unknown as {
+      read(path: string): Promise<string>;
+    };
+    adapter.read = vi.fn(async () => {
+      reads += 1;
+      return reads === 1 ? firstRead.promise : JSON.stringify(updated);
+    });
+
+    const earlierRefresh = service.sync();
+    const laterRefresh = service.sync();
+    firstRead.resolve(JSON.stringify(first));
+
+    await expect(earlierRefresh).resolves.toEqual({ cache: updated, errors: [] });
+    await expect(laterRefresh).resolves.toEqual({ cache: updated, errors: [] });
+    expect(reads).toBe(2);
+    expect(service.getState().cache?.syncedAt).toBe(updated.syncedAt);
+  });
+
+  it("keeps the last valid mobile cache visible during a transient read failure", async () => {
+    const harness = createHarness();
+    const calendarId = await hashCalendarIdentifier(WORK_RAW_ID);
+    const cached: CalendarCache = {
+      schemaVersion: 1,
+      syncedAt: "2026-08-20T10:00:00.000Z",
+      rangeStart: "2026-08-19T22:00:00.000Z",
+      rangeEnd: "2026-08-26T22:00:00.000Z",
+      calendars: [{ id: calendarId, name: "Work", color: "#3367d6" }],
+      events: [],
+    };
+    harness.files.set(CACHE_PATH, JSON.stringify(cached));
+    const service = new CalendarService(harness.app, settings(), {
+      isDesktop: () => false,
+    });
+    await service.initialize();
+    harness.controls.failCacheExists = true;
+
+    const result = await service.sync();
+
+    expect(result.cache).toEqual(cached);
+    expect(result.errors).toEqual([{ message: "Calendar cache could not be read." }]);
+    expect(service.getState()).toMatchObject({
+      phase: "cached",
+      connected: false,
+      cache: cached,
+      error: "Calendar cache could not be read.",
+    });
+  });
+
+  it("does not read the desktop OAuth credential on mobile", () => {
+    const harness = createHarness();
+    harness.controls.failSecretRead = true;
+    const service = new CalendarService(harness.app, settings(), {
+      isDesktop: () => false,
+    });
+
+    expect(service.hasClientSecret()).toBe(false);
+  });
+
+  it("keeps credential changes and Google calendar listing on desktop", async () => {
+    const harness = createHarness();
+    harness.controls.failSecretRead = true;
+    harness.controls.failSecretWrite = true;
+    const request = vi.fn(async (): Promise<RequestUrlResponse> => {
+      throw new Error("Mobile must not contact Google.");
+    });
+    const service = new CalendarService(harness.app, settings(), {
+      isDesktop: () => false,
+      request,
+    });
+    await service.initialize();
+
+    expect(() => service.setClientSecret("replacement")).toThrow(
+      "Manage Google Calendar credentials from Obsidian Desktop.",
+    );
+    expect(() => service.clearClientSecret()).toThrow(
+      "Manage Google Calendar credentials from Obsidian Desktop.",
+    );
+    expect(() => service.disconnect()).not.toThrow();
+    await expect(service.listCalendars()).rejects.toThrow(
+      "Refresh Google Calendar from Obsidian Desktop.",
+    );
+    expect(request).not.toHaveBeenCalled();
+    expect(harness.controls.secretWrites).toBe(0);
+  });
+
+  it("rejects mobile connection before authorization, secrets, or network work", async () => {
+    const harness = createHarness();
+    harness.controls.failSecretRead = true;
+    const request = vi.fn(async (): Promise<RequestUrlResponse> => response(500, {}));
+    const authorize = vi.fn(async () => ({
+      code: "must-not-run",
+      codeVerifier: "must-not-run",
+      redirectUri: "must-not-run",
+    }));
+    const service = new CalendarService(harness.app, settings(), {
+      isDesktop: () => false,
+      request,
+      authorize,
+    });
+    await service.initialize();
+
+    await expect(service.connect()).rejects.toThrow(
+      "Connect Google Calendar from Obsidian Desktop.",
+    );
+    expect(authorize).not.toHaveBeenCalled();
+    expect(request).not.toHaveBeenCalled();
+    expect(harness.controls.secretReads).toBe(0);
   });
 
   it("disconnect fences a pending sync before cache or token commit", async () => {

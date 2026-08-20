@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — 2026-08-20
+
+- Implemented mobile-compatible local dashboard behavior and layouts for desktop, iPhone, iPad, and Android.
+- Added mobile and iPad display of the reduced Calendar cache synchronized through the vault.
+- Kept Google OAuth, SecretStorage access, and direct Calendar API synchronization desktop-only.
+- Kept visible-calendar selection on desktop, which controls the reduced private data written for mobile display.
+- Added mobile cache reload behavior and platform-specific Calendar guidance.
+- Added automated mobile bundle, runtime, and cache coverage; physical iPhone, iPad, and Android verification remains pending.
+- Updated installation, privacy, security, architecture, testing, and roadmap documentation for the mobile data boundary.
+
 ## 0.1.1 — 2026-08-20
 
 - Added the required rationale to the desktop-only OAuth import directive.

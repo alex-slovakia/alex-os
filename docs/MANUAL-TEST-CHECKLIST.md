@@ -2,6 +2,8 @@
 
 Run this checklist in a disposable or backed-up synthetic vault. Never use real credentials, event details, private note paths, or imported book highlights in screenshots or public fixtures.
 
+Automated tests cover mobile bundle loading, runtime boundaries, and Calendar cache behavior. Physical iPhone, iPad, and Android checks below remain pending until their boxes are completed.
+
 ## Automated gate
 
 - [ ] <code>npm ci</code> succeeds.
@@ -14,6 +16,7 @@ Run this checklist in a disposable or backed-up synthetic vault. Never use real 
 
 - [ ] A clean manual install works with only <code>main.js</code>, <code>manifest.json</code>, and <code>styles.css</code>.
 - [ ] Alex OS enables without console errors on the declared minimum Obsidian version.
+- [ ] Community installation and enablement work on desktop, iPhone, iPad, and Android.
 - [ ] The dashboard fence renders once in Reading view and remains harmless in Source view.
 - [ ] Disable and re-enable leaves the Markdown source intact.
 
@@ -31,7 +34,12 @@ Run this checklist in a disposable or backed-up synthetic vault. Never use real 
 
 ## Calendar and privacy
 
-- [ ] The plugin is clearly marked desktop-only.
+- [ ] Google OAuth and direct Calendar API synchronization are available only on desktop.
+- [ ] Mobile and iPad never start OAuth, contact Google, or read Calendar secrets from SecretStorage.
+- [ ] Mobile and iPad display a valid reduced cache received through vault synchronization.
+- [ ] Mobile reloads the reduced cache after the synchronized vault copy changes.
+- [ ] A missing or stale mobile cache produces clear, non-blocking guidance.
+- [ ] Visible calendars are selected on desktop, and mobile displays only the resulting reduced cache.
 - [ ] Calendar remains disconnected until users provide their own matching Desktop Client ID and client secret.
 - [ ] Connection requests only <code>calendar.readonly</code>.
 - [ ] The OAuth callback validates state and PKCE and closes after success, cancellation, timeout, or unload.
@@ -40,6 +48,7 @@ Run this checklist in a disposable or backed-up synthetic vault. Never use real 
 - [ ] Disconnect clears authorization state and does not claim success after a storage failure.
 - [ ] Clear removes the app credential and authorization state.
 - [ ] The reduced cache contains no credentials, tokens, raw IDs, attendees, organizers, descriptions, conference data, or links.
+- [ ] Documentation and UI treat all cache content as private, including user-controlled titles, labels, and locations.
 - [ ] A tokenless successful response still caches events and safely full-syncs next time.
 - [ ] Cache-write and SecretStorage-write failure paths preserve a recoverable baseline.
 - [ ] Replacing a cache invalidates mismatched incremental state.
@@ -49,6 +58,9 @@ Run this checklist in a disposable or backed-up synthetic vault. Never use real 
 
 - [ ] Dark and light themes remain readable.
 - [ ] Wide and narrow desktop panes avoid horizontal clipping.
+- [ ] Phone portrait and landscape layouts avoid clipping and unreachable controls.
+- [ ] iPad portrait, landscape, split view, and Stage Manager widths remain usable.
+- [ ] Touch targets are usable without hover and do not conflict with mobile scrolling.
 - [ ] Keyboard focus is visible and follows logical order.
 - [ ] Dialogs close with Escape and restore focus.
 - [ ] Reduced-motion mode removes nonessential animation.
@@ -58,6 +70,7 @@ Run this checklist in a disposable or backed-up synthetic vault. Never use real 
 ## Release assets
 
 - [ ] Tag is the exact version, without a <code>v</code> prefix.
+- [ ] The manifest permits mobile installation and the Community Plugins review reports no mobile-blocking errors.
 - [ ] The GitHub release is published, not draft.
 - [ ] <code>main.js</code>, <code>manifest.json</code>, and <code>styles.css</code> are separate assets.
 - [ ] The optional ZIP contains exactly those three files at archive root.
