@@ -32,8 +32,8 @@ function event(
 describe("calendar event logic", () => {
   it("sorts by start, all-day priority, end, and title without mutating input", () => {
     const input = [
-      event("later", "2026-08-20T12:00:00+02:00", "2026-08-20T13:00:00+02:00"),
-      event("timed", "2026-08-20T00:00:00+02:00", "2026-08-20T01:00:00+02:00"),
+      event("later", "2026-08-20T12:00:00", "2026-08-20T13:00:00"),
+      event("timed", "2026-08-20T00:00:00", "2026-08-20T01:00:00"),
       event("all-day", "2026-08-20", "2026-08-21", { allDay: true }),
     ];
 
