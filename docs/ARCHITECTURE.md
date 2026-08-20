@@ -37,7 +37,7 @@ The Calendar service separates:
 
 Raw identifiers are hashed with SHA-256 before they enter the cache. A per-calendar durable cache generation binds an incremental token to the exact event baseline and date range it can safely extend. Cache persistence completes before new token state is committed.
 
-The OAuth callback uses a lazily loaded Node.js loopback server after a desktop-platform gate. For that reason the 0.1.0 manifest declares the plugin desktop-only.
+The OAuth callback uses a lazily loaded Node.js loopback server after a desktop-platform gate. For that reason the manifest declares the plugin desktop-only.
 
 ## Inspiration contract
 

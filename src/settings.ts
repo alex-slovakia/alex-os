@@ -25,7 +25,7 @@ export class AlexOsSettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("alex-os-settings");
 
-    new Setting(containerEl).setName("Alex OS").setHeading();
+    new Setting(containerEl).setName("General").setHeading();
     containerEl.createEl("p", {
       cls: "setting-item-description",
       text: "The vault remains the brain. Home.md is the cockpit."

@@ -1,6 +1,6 @@
 {
   "name": "alex-os-obsidian",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A live, local-first personal operating dashboard rendered inside Obsidian Home.md.",
   "license": "MIT",

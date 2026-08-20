@@ -44,7 +44,7 @@ Read the complete [privacy model](PRIVACY.md) and [security policy](SECURITY.md)
 
 ## 90-second quick start
 
-Alex OS 0.1.0 is a desktop plugin because its secure Google OAuth callback uses a local Node.js loopback listener.
+Alex OS is a desktop plugin because its secure Google OAuth callback uses a local Node.js loopback listener.
 
 1. Download <code>main.js</code>, <code>manifest.json</code>, and <code>styles.css</code> from the [latest release](https://github.com/alex-slovakia/alex-os/releases/latest).
 2. Create this folder inside your vault:
