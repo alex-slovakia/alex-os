@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible Alex OS problem without including private vault or Calendar data.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not paste OAuth credentials, tokens, private event details, or sensitive vault content. Use the Security tab for vulnerabilities.
+  - type: input
+    id: version
+    attributes:
+      label: Alex OS version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: obsidian
+    attributes:
+      label: Obsidian and operating-system version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Use synthetic note names and redact private content.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true

@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Alex OS dashboard preview</title>
+  <desc id="desc">An illustrated dark dashboard with synthetic schedule, focus, project, journal, and inspiration data.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#100e1c"/>
+      <stop offset="0.55" stop-color="#171126"/>
+      <stop offset="1" stop-color="#0c1720"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#43246f"/>
+      <stop offset="0.5" stop-color="#261842"/>
+      <stop offset="1" stop-color="#132b38"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="0.5" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.34"/>
+    </filter>
+    <style>
+      .label { font: 700 11px Inter, Segoe UI, sans-serif; letter-spacing: 2px; fill: #b9a8d5; }
+      .title { font: 750 31px Inter, Segoe UI, sans-serif; fill: #fff; }
+      .card-title { font: 700 15px Inter, Segoe UI, sans-serif; fill: #f7f3ff; }
+      .body { font: 500 13px Inter, Segoe UI, sans-serif; fill: #d3cce0; }
+      .muted { font: 500 11px Inter, Segoe UI, sans-serif; fill: #8d859c; }
+      .metric { font: 760 22px Inter, Segoe UI, sans-serif; fill: #fff; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <circle cx="1040" cy="80" r="190" fill="#8b5cf6" opacity="0.07"/>
+  <circle cx="160" cy="690" r="210" fill="#22d3ee" opacity="0.05"/>
+
+  <g filter="url(#shadow)">
+    <rect x="42" y="34" width="1116" height="188" rx="25" fill="url(#hero)" stroke="#7657a4" stroke-opacity="0.48"/>
+  </g>
+  <rect x="42" y="34" width="7" height="188" rx="4" fill="url(#accent)"/>
+  <text x="78" y="70" class="label">ALEX OS · PERSONAL COMMAND</text>
+  <rect x="1002" y="54" width="52" height="32" rx="16" fill="#ffffff" fill-opacity="0.08"/>
+  <circle cx="1022" cy="70" r="5" fill="#4ade80"/>
+  <text x="1035" y="74" class="muted">LIVE</text>
+  <rect x="1064" y="54" width="66" height="32" rx="16" fill="#ffffff" fill-opacity="0.08"/>
+  <text x="1080" y="74" class="muted">SETTINGS</text>
+
+  <text x="78" y="116" class="body" fill="#cab9e6">GOOD MORNING</text>
+  <text x="78" y="153" class="title">Friend’s command center</text>
+  <text x="78" y="181" class="body">Thursday, 20 August · Your vault at a glance</text>
+
+  <text x="985" y="140" text-anchor="middle" style="font: 760 47px Inter, Segoe UI, sans-serif; fill:#fff">08:42</text>
+  <text x="985" y="163" text-anchor="middle" class="muted">LOCAL TIME</text>
+  <rect x="731" y="185" width="365" height="8" rx="4" fill="#ffffff" fill-opacity="0.09"/>
+  <rect x="731" y="185" width="128" height="8" rx="4" fill="url(#accent)"/>
+  <text x="1110" y="193" text-anchor="end" class="muted">35% ELAPSED</text>
+
+  <g>
+    <rect x="42" y="242" width="264" height="74" rx="18" fill="#171322" stroke="#5b397d" stroke-opacity="0.75"/>
+    <circle cx="76" cy="279" r="18" fill="#8b5cf6" fill-opacity="0.2"/>
+    <path d="M68 279h16M76 271v16" stroke="#c4b5fd" stroke-width="2" stroke-linecap="round"/>
+    <text x="106" y="275" class="metric">3</text>
+    <text x="106" y="293" class="muted">ACTIVE PROJECTS</text>
+
+    <rect x="322" y="242" width="264" height="74" rx="18" fill="#171322" stroke="#7b5520" stroke-opacity="0.8"/>
+    <circle cx="356" cy="279" r="18" fill="#f59e0b" fill-opacity="0.18"/>
+    <path d="M348 280l5 5 10-13" fill="none" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="386" y="275" class="metric">1</text>
+    <text x="386" y="293" class="muted">MAIN PRIORITY</text>
+
+    <rect x="602" y="242" width="264" height="74" rx="18" fill="#171322" stroke="#205e66" stroke-opacity="0.8"/>
+    <circle cx="636" cy="279" r="18" fill="#22d3ee" fill-opacity="0.16"/>
+    <path d="M630 274h12M630 279h12M630 284h8" stroke="#67e8f9" stroke-width="2" stroke-linecap="round"/>
+    <text x="666" y="275" class="metric">6</text>
+    <text x="666" y="293" class="muted">RECENT NOTES</text>
+
+    <rect x="882" y="242" width="276" height="74" rx="18" fill="#171322" stroke="#30563f" stroke-opacity="0.8"/>
+    <circle cx="916" cy="279" r="18" fill="#4ade80" fill-opacity="0.15"/>
+    <circle cx="916" cy="279" r="6" fill="none" stroke="#86efac" stroke-width="2"/>
+    <path d="M916 270v4M916 284v4M907 279h4M921 279h4" stroke="#86efac" stroke-width="1.7" stroke-linecap="round"/>
+    <text x="946" y="275" class="metric">28m</text>
+    <text x="946" y="293" class="muted">OPEN FOCUS BLOCK</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="42" y="336" width="448" height="166" rx="20" fill="#181522" stroke="#4b3b61"/>
+    <rect x="506" y="336" width="652" height="166" rx="20" fill="#181522" stroke="#4b3b61"/>
+  </g>
+
+  <text x="66" y="370" class="label">TODAY’S SCHEDULE</text>
+  <rect x="66" y="389" width="400" height="43" rx="12" fill="#242033"/>
+  <circle cx="82" cy="410" r="5" fill="#a78bfa"/>
+  <text x="98" y="406" class="card-title">Deep work block</text>
+  <text x="98" y="422" class="muted">09:00–10:30 · Focus</text>
+  <rect x="66" y="441" width="400" height="43" rx="12" fill="#20242d"/>
+  <circle cx="82" cy="462" r="5" fill="#22d3ee"/>
+  <text x="98" y="458" class="card-title">Project review</text>
+  <text x="98" y="474" class="muted">11:15–11:45 · Work</text>
+
+  <text x="530" y="370" class="label">TODAY’S MAIN PRIORITY</text>
+  <text x="530" y="404" style="font: 740 24px Inter, Segoe UI, sans-serif; fill:#fff">Ship the first useful slice</text>
+  <text x="530" y="432" class="body">Next: verify the release artifacts and write the handoff.</text>
+  <rect x="530" y="454" width="185" height="29" rx="14" fill="#f59e0b" fill-opacity="0.14"/>
+  <text x="548" y="473" class="muted" fill="#fcd34d">OPEN DAILY FOCUS ↗</text>
+  <rect x="730" y="454" width="180" height="29" rx="14" fill="#8b5cf6" fill-opacity="0.15"/>
+  <text x="748" y="473" class="muted" fill="#c4b5fd">PROJECT BRIEF ↗</text>
+
+  <g filter="url(#shadow)">
+    <rect x="42" y="520" width="548" height="154" rx="20" fill="#181522" stroke="#4b3b61"/>
+    <rect x="606" y="520" width="552" height="154" rx="20" fill="#181522" stroke="#4b3b61"/>
+  </g>
+
+  <text x="66" y="553" class="label">DAILY INSPIRATION</text>
+  <text x="66" y="584" style="font: italic 600 18px Georgia, serif; fill:#f7f1ff">“Begin; the next step becomes clearer through motion.”</text>
+  <text x="66" y="609" class="muted">— ALEX OS SAMPLE</text>
+  <rect x="66" y="628" width="500" height="1" fill="#ffffff" fill-opacity="0.08"/>
+  <text x="66" y="651" class="body">Small steps, repeated with care, turn plans into systems.</text>
+
+  <text x="630" y="553" class="label">QUICK CAPTURE</text>
+  <rect x="630" y="572" width="504" height="52" rx="14" fill="#100e19" stroke="#67557e"/>
+  <text x="650" y="603" class="body" fill="#91899c">Capture an idea before it disappears…</text>
+  <rect x="1044" y="582" width="74" height="32" rx="10" fill="#8b5cf6"/>
+  <text x="1081" y="602" text-anchor="middle" style="font:700 11px Inter, Segoe UI, sans-serif; fill:#fff">CAPTURE</text>
+  <text x="630" y="651" class="muted">Markdown in · Markdown out · Your vault remains portable</text>
+</svg>

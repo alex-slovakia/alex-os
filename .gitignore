@@ -1,0 +1,20 @@
+node_modules/
+coverage/
+*.log
+*.map
+*.zip
+main.js
+data.json
+.env
+.env.*
+.npmrc
+.obsidian/
+.DS_Store
+Thumbs.db
+client_secret*.json
+credentials*.json
+token*.json
+*.pem
+*.key
+Calendar.json
+00 System/Alex OS/Cache/

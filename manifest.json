@@ -1,0 +1,10 @@
+{
+  "id": "alex-os",
+  "name": "Alex OS",
+  "version": "0.1.0",
+  "minAppVersion": "1.11.4",
+  "description": "A colorful, local-first command center powered by Markdown and optional read-only Google Calendar.",
+  "author": "alex-slovakia",
+  "authorUrl": "https://github.com/alex-slovakia",
+  "isDesktopOnly": true
+}
