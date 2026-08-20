@@ -60,7 +60,7 @@ async function createLoopbackReceiver(expectedState: string, timeoutMs: number):
   // Obsidian Desktop loads plugins as CommonJS. Keep this require inside the
   // desktop-only connect path so Mobile never evaluates the Node built-in.
   // A dynamic import survives esbuild and Chromium tries to fetch `node:http`.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- Load Node HTTP only when the desktop OAuth flow starts.
   const { createServer } = require("node:http") as typeof import("node:http");
   let server: Server | null = null;
   let settled = false;

@@ -1,6 +1,6 @@
 # Installation
 
-Alex OS 0.1.0 supports desktop Obsidian 1.11.4 or newer.
+Alex OS supports desktop Obsidian 1.11.4 or newer.
 
 ## Option A: GitHub release
 
@@ -59,7 +59,7 @@ Open **Settings → Alex OS** and set:
 - Journal root and index
 - Greeting name, density, and visible modules
 
-The defaults use a numbered-folder convention, and the main source paths are editable. Quick navigation uses a small set of generic default destinations in 0.1.0. Missing source notes are safe: the relevant card is hidden or shows a neutral empty state.
+The defaults use a numbered-folder convention, and the main source paths are editable. Quick navigation uses a small set of generic default destinations. Missing source notes are safe: the relevant card is hidden or shows a neutral empty state.
 
 Starter files are available in [examples](../examples/). For Daily Focus, prefer the dashboard’s **Set today’s focus** action so the note receives today’s exact local date.
 
