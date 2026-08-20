@@ -1,4 +1,4 @@
-import type { Server } from "node:http";
+import { Platform } from "obsidian";
 
 export const GOOGLE_CALENDAR_READONLY_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
 export const GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -56,13 +56,41 @@ interface LoopbackReceiver {
   cancel(error: Error): void;
 }
 
+interface LoopbackRequest {
+  url?: string;
+}
+
+interface LoopbackResponse {
+  writeHead(status: number, headers: Record<string, string>): void;
+  end(body: string): void;
+}
+
+interface LoopbackServer {
+  readonly listening: boolean;
+  close(): void;
+  once(event: "error", listener: (error: Error) => void): void;
+  off(event: "error", listener: (error: Error) => void): void;
+  listen(port: number, host: string, listener: () => void): void;
+  address(): string | { port: number } | null;
+}
+
+type CreateLoopbackServer = (
+  listener: (request: LoopbackRequest, response: LoopbackResponse) => void,
+) => LoopbackServer;
+
 async function createLoopbackReceiver(expectedState: string, timeoutMs: number): Promise<LoopbackReceiver> {
+  if (!Platform.isDesktop) {
+    throw new Error("Connect Google Calendar from Obsidian Desktop.");
+  }
+  if (!Platform.isDesktopApp) {
+    throw new Error("Connect Google Calendar from Obsidian Desktop.");
+  }
   // Obsidian Desktop loads plugins as CommonJS. Keep this require inside the
   // desktop-only connect path so Mobile never evaluates the Node built-in.
   // A dynamic import survives esbuild and Chromium tries to fetch `node:http`.
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- Load Node HTTP only when the desktop OAuth flow starts.
-  const { createServer } = require("node:http") as typeof import("node:http");
-  let server: Server | null = null;
+  const { createServer } = require("node:http") as { createServer: CreateLoopbackServer };
+  let server: LoopbackServer | null = null;
   let settled = false;
   let resolveCode: (code: string) => void = () => undefined;
   let rejectCode: (error: Error) => void = () => undefined;

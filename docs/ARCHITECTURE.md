@@ -1,12 +1,18 @@
 # Architecture
 
-Alex OS is an Obsidian Markdown code-block processor backed by two independent data paths:
+Alex OS is an Obsidian Markdown code-block processor backed by local vault data and an optional reduced Calendar cache:
 
 ~~~text
-Vault Markdown + metadata ──> local snapshot ──┐
-                                               ├──> dashboard renderer
-Optional Google Calendar ──> reduced cache ────┘
+Vault Markdown + metadata ───────────────> local snapshot ──┐
+                                                            ├──> dashboard renderer
+Desktop Google sync ──> reduced vault cache ────────────────┘
+                                  │
+                         optional vault sync
+                                  │
+                                  └──> mobile/iPad cache reader
 ~~~
+
+The 0.2.0 local dashboard is implemented for desktop, iPhone, iPad, and Android. Automated bundle and runtime tests cover mobile loading; manual physical-device verification remains pending.
 
 The renderer never turns HTML into the source of truth. Notes and frontmatter remain readable when the plugin is disabled.
 
@@ -28,16 +34,24 @@ Vault refreshes are event-driven and debounced. Calendar polling does not rescan
 
 ## Calendar boundary
 
-The Calendar service separates:
+The desktop Calendar service separates:
 
 - transient access tokens in memory;
 - app credentials, refresh tokens, raw IDs, and sync state in SecretStorage;
 - reduced display cache in the vault;
-- renderer state containing only data safe for the dashboard.
+- renderer state containing only the reduced fields needed by the dashboard.
 
-Raw identifiers are hashed with SHA-256 before they enter the cache. A per-calendar durable cache generation binds an incremental token to the exact event baseline and date range it can safely extend. Cache persistence completes before new token state is committed.
+Raw identifiers are hashed with SHA-256 before they enter the cache. A durable cache generation binds each incremental token to the event baseline and date range it can safely extend.
 
-The OAuth callback uses a lazily loaded Node.js loopback server after a desktop-platform gate. For that reason the manifest declares the plugin desktop-only.
+Cache persistence completes before new token state is committed.
+
+The OAuth callback uses a lazily loaded Node.js loopback server after a desktop-platform gate. OAuth and direct Google API synchronization are unavailable on mobile.
+
+Mobile and iPad load only the reduced cache from the vault. They never contact Google and never read Calendar credentials, tokens, raw identifiers, or sync state from SecretStorage.
+
+Visible-calendar selection is desktop-owned. It determines which calendars contribute reduced display data to the cache that mobile can read.
+
+The cache can contain user-controlled personal text, including event titles, labels, and locations. It is a reduced data set, not public or anonymous data, and must be protected as private vault content.
 
 ## Inspiration contract
 
@@ -58,14 +72,17 @@ The source label is text, not a network integration. Invalid or unresolved conte
 
 ## Lifecycle
 
-- The plugin owns one Calendar service and disposes it on unload.
-- OAuth, sync, disconnect, credential rotation, and disposal are operation-fenced.
+- Desktop owns the Google authorization and synchronization lifecycle.
+- OAuth, direct sync, disconnect, credential rotation, and disposal are operation-fenced on desktop.
+- Mobile owns no Google session; it reloads the reduced cache when the synchronized vault copy changes.
 - Vault events trigger a debounced local snapshot.
-- A timer polls only Calendar state.
+- Desktop polling updates Google Calendar state; mobile polling only checks the vault cache.
 - Renderers subscribe to plugin state and are detached with their Markdown render children.
 
 ## Threat model
 
-Alex OS defends against accidental credential persistence, stale incremental tokens, unsafe cache replacement, malformed frontmatter, broken vault paths, and plugin unload races. It does not make a synchronized vault or endpoint secure by itself. Users must protect their vault, Google Cloud project, device, and sync provider.
+Alex OS defends against accidental credential persistence, stale incremental tokens, unsafe cache replacement, malformed frontmatter, broken vault paths, and plugin unload races.
+
+It does not make a synchronized vault or endpoint secure by itself. Users must protect their vault, Google Cloud project, devices, and sync provider. Reduced Calendar cache text remains personal data even without raw IDs or tokens.
 
 See [Privacy](../PRIVACY.md), [Security](../SECURITY.md), and [Google Calendar setup](GOOGLE-CALENDAR-SETUP.md).

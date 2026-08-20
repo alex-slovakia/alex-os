@@ -3,6 +3,7 @@ import {
   MarkdownView,
   Modal,
   Notice,
+  Platform,
   Plugin,
   TAbstractFile,
   TFile,
@@ -10,6 +11,10 @@ import {
 } from "obsidian";
 
 import { CalendarService } from "./src/calendar";
+import {
+  getCalendarRefreshAction,
+  shouldReloadCalendarCacheForVaultEvent
+} from "./src/calendar/lifecycle";
 import { DEFAULT_SETTINGS } from "./src/defaults";
 import { DashboardRenderer } from "./src/dashboard/renderer";
 import { AlexOsSettingTab } from "./src/settings";
@@ -239,6 +244,7 @@ export default class AlexOsPlugin extends Plugin {
   private localRefresh: Promise<void> | null = null;
   private localRefreshPending = false;
   private localRefreshTimer: number | null = null;
+  private calendarCacheRefreshTimer: number | null = null;
   private pollingTimer: number | null = null;
   private unsubscribeCalendar: (() => void) | null = null;
 
@@ -262,6 +268,9 @@ export default class AlexOsPlugin extends Plugin {
     this.addRibbonIcon("layout-dashboard", "Open Alex OS", () => void this.openHome());
     this.addCommands();
     this.registerVaultRefreshEvents();
+    this.registerDomEvent(document, "visibilitychange", () => {
+      if (document.visibilityState === "visible") void this.refreshCalendar(false);
+    });
     this.registerEvent(
       this.app.workspace.on("file-open", (file) => {
         if (file) this.ensureHomePreview(file);
@@ -280,6 +289,7 @@ export default class AlexOsPlugin extends Plugin {
   onunload(): void {
     if (this.pollingTimer !== null) window.clearInterval(this.pollingTimer);
     if (this.localRefreshTimer !== null) window.clearTimeout(this.localRefreshTimer);
+    if (this.calendarCacheRefreshTimer !== null) window.clearTimeout(this.calendarCacheRefreshTimer);
     this.calendarService?.dispose();
     this.unsubscribeCalendar?.();
     for (const renderer of [...this.renderers]) renderer.destroy();
@@ -309,13 +319,14 @@ export default class AlexOsPlugin extends Plugin {
 
   async refreshAll(force = false): Promise<void> {
     const local = this.refreshLocal();
-    const calendar = this.calendarService.getState().connected
-      ? this.calendarService.sync(force).then(() => undefined)
-      : Promise.resolve();
+    const calendar = this.refreshCalendar(force);
     await Promise.all([local, calendar]);
   }
 
   async connectGoogle(): Promise<void> {
+    if (!Platform.isDesktopApp) {
+      throw new Error("Connect Google Calendar from Obsidian Desktop.");
+    }
     if (!this.settings.googleClientId.trim()) {
       this.openSettings();
       throw new Error("Add a Desktop OAuth client ID in Alex OS settings first.");
@@ -370,6 +381,7 @@ export default class AlexOsPlugin extends Plugin {
 
   private actions(): AlexOsActions {
     return {
+      canConnectGoogle: Platform.isDesktopApp,
       openPath: async (path, newLeaf) => {
         try {
           await this.vaultActions.openPath(path, newLeaf);
@@ -459,6 +471,19 @@ export default class AlexOsPlugin extends Plugin {
     }
   }
 
+  private async refreshCalendar(force: boolean): Promise<void> {
+    const state = this.calendarService.getState();
+    const action = getCalendarRefreshAction({
+      isDesktopApp: Platform.isDesktopApp,
+      connected: state.connected
+    });
+    if (action === "sync") {
+      await this.calendarService.sync(force);
+      return;
+    }
+    await this.calendarService.loadCached();
+  }
+
   private rebuildVaultServices(): void {
     this.snapshotService = new VaultSnapshotService(this.app.vault, this.app.metadataCache, this.settings);
     this.vaultActions = createVaultActions(this.app, this.settings);
@@ -472,9 +497,7 @@ export default class AlexOsPlugin extends Plugin {
     if (this.pollingTimer !== null) window.clearInterval(this.pollingTimer);
     this.pollingTimer = window.setInterval(
       () => {
-        if (this.calendarService.getState().connected) {
-          void this.calendarService.sync(false);
-        }
+        void this.refreshCalendar(false);
       },
       this.settings.refreshIntervalMinutes * 60_000
     );
@@ -482,14 +505,37 @@ export default class AlexOsPlugin extends Plugin {
   }
 
   private registerVaultRefreshEvents(): void {
-    const schedule = (file: TAbstractFile): void => {
+    const scheduleLocal = (file: TAbstractFile): void => {
       if (file instanceof TFile && file.extension !== "md") return;
       this.scheduleLocalRefresh();
     };
-    this.registerEvent(this.app.vault.on("create", schedule));
-    this.registerEvent(this.app.vault.on("delete", schedule));
-    this.registerEvent(this.app.vault.on("modify", schedule));
-    this.registerEvent(this.app.vault.on("rename", schedule));
+    const scheduleCalendar = (file: TAbstractFile, previousPath?: string): void => {
+      if (shouldReloadCalendarCacheForVaultEvent({
+        isDesktopApp: Platform.isDesktopApp,
+        connected: this.calendarService.getState().connected,
+        cachePath: this.settings.calendarCachePath,
+        filePath: file.path,
+        previousPath
+      })) {
+        this.scheduleCalendarCacheRefresh();
+      }
+    };
+    this.registerEvent(this.app.vault.on("create", (file) => {
+      scheduleLocal(file);
+      scheduleCalendar(file);
+    }));
+    this.registerEvent(this.app.vault.on("delete", (file) => {
+      scheduleLocal(file);
+      scheduleCalendar(file);
+    }));
+    this.registerEvent(this.app.vault.on("modify", (file) => {
+      scheduleLocal(file);
+      scheduleCalendar(file);
+    }));
+    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+      scheduleLocal(file);
+      scheduleCalendar(file, oldPath);
+    }));
   }
 
   private scheduleLocalRefresh(): void {
@@ -497,6 +543,14 @@ export default class AlexOsPlugin extends Plugin {
     this.localRefreshTimer = window.setTimeout(() => {
       this.localRefreshTimer = null;
       void this.refreshLocal();
+    }, 280);
+  }
+
+  private scheduleCalendarCacheRefresh(): void {
+    if (this.calendarCacheRefreshTimer !== null) window.clearTimeout(this.calendarCacheRefreshTimer);
+    this.calendarCacheRefreshTimer = window.setTimeout(() => {
+      this.calendarCacheRefreshTimer = null;
+      void this.refreshCalendar(false);
     }, 280);
   }
 

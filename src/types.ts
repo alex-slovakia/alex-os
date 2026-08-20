@@ -146,6 +146,7 @@ export interface AlexOsSettings {
 }
 
 export interface AlexOsActions {
+  canConnectGoogle: boolean;
   openPath(path: string, newLeaf?: boolean): Promise<void>;
   refreshAll(force?: boolean): Promise<void>;
   capture(text: string): Promise<string>;

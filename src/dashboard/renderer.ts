@@ -6,6 +6,7 @@ import {
   getCurrentAndNextEvents,
   getDayProgress
 } from "../calendar/logic";
+import { disconnectedCalendarPresentation } from "./calendar-presentation";
 import type {
   AlexOsActions,
   AlexOsSettings,
@@ -287,6 +288,7 @@ export class DashboardRenderer {
     const chips = element("div", { className: "alex-os-hero-chips" });
     const hasSchedule = this.calendarCoversDay(now) && this.calendarSelectionEnabled();
     const calendarDisconnected = !this.state.calendar.cache && !this.state.calendar.connected;
+    const disconnected = disconnectedCalendarPresentation(this.actions.canConnectGoogle);
     const { current, next } = hasSchedule
       ? currentAndNext(this.state.calendar.cache?.events ?? [], now)
       : { current: undefined, next: undefined };
@@ -305,7 +307,7 @@ export class DashboardRenderer {
           ? current?.title ?? "Open block"
           : this.calendarSelectionEnabled()
             ? calendarDisconnected
-              ? "Calendar disconnected"
+              ? disconnected.nowLabel
               : "Schedule unavailable"
             : "Calendars hidden",
         current
@@ -325,7 +327,7 @@ export class DashboardRenderer {
           ? next?.title ?? "No event queued"
           : this.calendarSelectionEnabled()
             ? calendarDisconnected
-              ? "Connect calendar"
+              ? disconnected.nextLabel
               : "Refresh calendar"
             : "Select calendars",
         hasSchedule || !this.calendarSelectionEnabled() || calendarDisconnected ? "purple" : "red"
@@ -423,18 +425,21 @@ export class DashboardRenderer {
     const body = element("div", { className: "alex-os-timeline" });
 
     if (!this.state.calendar.cache && !this.state.calendar.connected) {
+      const disconnected = disconnectedCalendarPresentation(this.actions.canConnectGoogle);
       body.append(
         this.emptyState(
           "calendar-plus",
-          "Bring today into view",
-          "Connect an optional read-only Google Calendar from Alex OS settings."
+          disconnected.emptyTitle,
+          disconnected.emptyDescription
         )
       );
-      const connect = button("Connect Google Calendar", "link-2", "alex-os-button alex-os-button--primary");
-      connect.addEventListener("click", () => {
-        void this.actions.connectGoogle().catch(() => undefined);
-      });
-      body.append(connect);
+      if (disconnected.actionLabel) {
+        const connect = button(disconnected.actionLabel, "link-2", "alex-os-button alex-os-button--primary");
+        connect.addEventListener("click", () => {
+          void this.actions.connectGoogle().catch(() => undefined);
+        });
+        body.append(connect);
+      }
     } else if (!selectionEnabled) {
       body.append(
         this.emptyState(
@@ -614,6 +619,7 @@ export class DashboardRenderer {
     const selectionEnabled = this.calendarSelectionEnabled();
     const hasSchedule = this.calendarCoversDay(new Date()) && selectionEnabled;
     const calendarDisconnected = !this.state.calendar.cache && !this.state.calendar.connected;
+    const disconnected = disconnectedCalendarPresentation(this.actions.canConnectGoogle);
     const { current, next } = hasSchedule
       ? currentAndNext(events)
       : { current: undefined, next: undefined };
@@ -626,7 +632,7 @@ export class DashboardRenderer {
           ? current?.title ?? "Open block"
           : selectionEnabled
             ? calendarDisconnected
-              ? "Calendar disconnected"
+              ? disconnected.nowLabel
               : "Schedule unavailable"
             : "Calendars hidden"
       })
@@ -659,10 +665,10 @@ export class DashboardRenderer {
       );
     } else if (!hasSchedule) {
       upcoming.append(
-        element("strong", { text: calendarDisconnected ? "Connect calendar" : "Refresh calendar" }),
+        element("strong", { text: calendarDisconnected ? disconnected.nextLabel : "Refresh calendar" }),
         element("span", {
           text: calendarDisconnected
-            ? "Set up read-only Google Calendar in Alex OS settings."
+            ? disconnected.nextDescription
             : "Cached dates no longer cover today."
         })
       );
@@ -973,15 +979,16 @@ export class DashboardRenderer {
     list.append(
       this.statusRow("Vault index", this.state.localError ? "Needs attention" : "Live", !this.state.localError),
       this.statusRow(
-        "Google Calendar",
+        this.actions.canConnectGoogle ? "Google Calendar" : "Calendar cache",
         this.state.calendar.connected
           ? this.state.calendar.error
             ? "Using cache"
             : "Connected"
           : this.state.calendar.cache
-            ? "Cached only"
-            : "Not connected",
-        this.state.calendar.connected && !this.state.calendar.error
+            ? this.actions.canConnectGoogle ? "Cached only" : "From desktop"
+            : this.actions.canConnectGoogle ? "Not connected" : "Waiting for cache",
+        !this.state.calendar.error
+          && (this.state.calendar.connected || (!this.actions.canConnectGoogle && Boolean(this.state.calendar.cache)))
       )
     );
     if (this.state.calendar.error) {
@@ -1133,7 +1140,7 @@ export class DashboardRenderer {
     }
     if (this.state.calendar.lastCheckedAt) return `checked ${relativeAge(this.state.calendar.lastCheckedAt)}`;
     if (this.state.calendar.cache?.syncedAt) return `cached ${relativeAge(this.state.calendar.cache.syncedAt)}`;
-    return "not connected";
+    return this.actions.canConnectGoogle ? "not connected" : "waiting for cache";
   }
 
   private dayPercent(date = new Date()): number {

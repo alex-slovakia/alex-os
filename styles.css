@@ -1530,13 +1530,18 @@ button.alex-os-metric:hover { background: color-mix(in srgb, var(--alex-tone) 6%
 
 .alex-os-event-dialog {
   width: min(92vw, 470px);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   padding: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: var(--alex-text);
   border: 1px solid var(--alex-border-strong);
   border-radius: 22px;
   background: var(--alex-card-bg-strong);
   box-shadow: 0 35px 110px rgb(0 0 0 / 45%);
   backdrop-filter: blur(25px);
+  -webkit-overflow-scrolling: touch;
 }
 
 .alex-os-event-dialog::backdrop {
@@ -1797,6 +1802,46 @@ button.alex-os-metric:hover { background: color-mix(in srgb, var(--alex-tone) 6%
   .alex-os-metric,
   .alex-os-metric:nth-last-child(-n + 2) { border-bottom: 1px solid var(--alex-border); }
   .alex-os-metric:last-child { border-bottom: 0; }
+}
+
+/* Touch-first devices need larger hit areas and must not retain desktop hover motion. */
+@media (pointer: coarse) {
+  .alex-os button,
+  .alex-os input,
+  .alex-os summary,
+  .alex-os-modal-controls button,
+  .alex-os-modal-input {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .alex-os-capture-input,
+  .alex-os-modal-input {
+    font-size: 16px;
+  }
+
+  .alex-os-icon-button:hover,
+  .alex-os-event:hover,
+  .alex-os-button:hover,
+  .alex-os-project:hover,
+  .alex-os-nav-link:hover {
+    transform: none;
+    filter: none;
+  }
+
+  .alex-os-event-dialog {
+    width: min(
+      calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)),
+      470px
+    );
+    max-height: calc(
+      100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+    );
+    padding-top: max(24px, env(safe-area-inset-top, 0px));
+    padding-right: max(18px, env(safe-area-inset-right, 0px));
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(18px, env(safe-area-inset-left, 0px));
+  }
 }
 
 .alex-os-settings-note {

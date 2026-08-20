@@ -2,9 +2,11 @@ import type { DataAdapter } from "obsidian";
 import type { CalendarCache, CalendarDescriptor, CalendarEvent } from "../types";
 import { calendarDate } from "./logic";
 
-type CalendarCacheAdapter = Pick<DataAdapter, "exists" | "mkdir" | "read" | "write">;
+type CalendarCacheAdapter = Pick<DataAdapter, "exists" | "mkdir" | "read" | "write">
+  & Partial<Pick<DataAdapter, "stat">>;
 
 export const CALENDAR_CACHE_HEARTBEAT_MS = 30 * 60_000;
+export const CALENDAR_CACHE_MAX_LENGTH = 2 * 1024 * 1024;
 
 export interface CalendarCacheReadResult {
   cache: CalendarCache | null;
@@ -177,8 +179,33 @@ export async function calendarCacheGeneration(cache: CalendarCache): Promise<str
     .join("");
 }
 
-function normalizeVaultPath(path: string): string {
-  return path.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "").replace(/\/{2,}/g, "/");
+export function normalizeCalendarCachePath(path: string): string {
+  const normalized = path.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "").replace(/\/{2,}/g, "/");
+  const segments = normalized.split("/");
+  if (
+    !normalized
+    || segments[0]?.toLowerCase() === ".obsidian"
+    || segments.some((segment) => (
+      segment === "."
+      || segment === ".."
+      || segment.includes("\0")
+      || segment.includes(":")
+    ))
+  ) {
+    return "";
+  }
+  return segments.join("/");
+}
+
+export function calendarCachePathMatches(
+  configuredPath: string,
+  currentPath: string,
+  previousPath?: string,
+): boolean {
+  const configured = normalizeCalendarCachePath(configuredPath);
+  if (!configured) return false;
+  return normalizeCalendarCachePath(currentPath) === configured
+    || (previousPath !== undefined && normalizeCalendarCachePath(previousPath) === configured);
 }
 
 export class CalendarCacheStore {
@@ -188,7 +215,7 @@ export class CalendarCacheStore {
     private readonly adapter: CalendarCacheAdapter,
     path: string,
   ) {
-    this.path = normalizeVaultPath(path);
+    this.path = normalizeCalendarCachePath(path);
   }
 
   get cachePath(): string {
@@ -203,7 +230,21 @@ export class CalendarCacheStore {
     try {
       if (!this.path) return { cache: null, error: "Calendar cache path is empty." };
       if (!(await this.adapter.exists(this.path))) return { cache: null };
-      const cache = sanitizeCalendarCache(JSON.parse(await this.adapter.read(this.path)) as unknown);
+      const metadata = await this.adapter.stat?.(this.path);
+      if (metadata?.type !== undefined && metadata.type !== "file") {
+        return { cache: null, error: "Calendar cache path is not a file and was ignored." };
+      }
+      if (metadata && metadata.size > CALENDAR_CACHE_MAX_LENGTH) {
+        return { cache: null, error: "Calendar cache is too large and was ignored." };
+      }
+      const raw = await this.adapter.read(this.path);
+      if (
+        raw.length > CALENDAR_CACHE_MAX_LENGTH
+        || new TextEncoder().encode(raw).byteLength > CALENDAR_CACHE_MAX_LENGTH
+      ) {
+        return { cache: null, error: "Calendar cache is too large and was ignored." };
+      }
+      const cache = sanitizeCalendarCache(JSON.parse(raw) as unknown);
       return cache
         ? { cache }
         : { cache: null, error: "Calendar cache is invalid and was ignored." };
@@ -213,10 +254,18 @@ export class CalendarCacheStore {
   }
 
   async write(cache: CalendarCache): Promise<void> {
+    if (!this.path) throw new Error("Calendar cache path is invalid.");
     const safe = sanitizeCalendarCache(cache);
     if (!safe) throw new Error("Refusing to write an invalid calendar cache.");
+    const serialized = `${JSON.stringify(safe, null, 2)}\n`;
+    if (
+      serialized.length > CALENDAR_CACHE_MAX_LENGTH
+      || new TextEncoder().encode(serialized).byteLength > CALENDAR_CACHE_MAX_LENGTH
+    ) {
+      throw new Error("Calendar cache exceeds the safe size limit.");
+    }
     await this.ensureParentFolders();
-    await this.adapter.write(this.path, `${JSON.stringify(safe, null, 2)}\n`);
+    await this.adapter.write(this.path, serialized);
   }
 
   private async ensureParentFolders(): Promise<void> {
