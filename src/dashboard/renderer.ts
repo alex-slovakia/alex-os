@@ -27,11 +27,11 @@ function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   options: ElementOptions = {}
 ): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (options.className) node.className = options.className;
-  if (options.text !== undefined) node.textContent = options.text;
-  if (options.ariaLabel) node.setAttribute("aria-label", options.ariaLabel);
-  return node;
+  return createEl(tag, {
+    ...(options.className ? { cls: options.className } : {}),
+    ...(options.text !== undefined ? { text: options.text } : {}),
+    ...(options.ariaLabel ? { attr: { "aria-label": options.ariaLabel } } : {})
+  });
 }
 
 function icon(name: string, className = "alex-os-icon"): HTMLElement {
@@ -132,6 +132,7 @@ export class DashboardRenderer {
   private selectedEventId: string | null = null;
   private lastTemporalSignature = "";
   private refreshBusy = false;
+  private previewView: HTMLElement | null = null;
 
   constructor(
     private readonly container: HTMLElement,
@@ -145,6 +146,8 @@ export class DashboardRenderer {
 
   mount(): void {
     this.container.classList.add("alex-os-host");
+    this.previewView = this.container.closest<HTMLElement>(".markdown-preview-view");
+    this.previewView?.classList.add("alex-os-dashboard-view");
     this.render();
     this.ticker = window.setInterval(() => this.tick(), 15_000);
   }
@@ -174,6 +177,11 @@ export class DashboardRenderer {
     this.ticker = null;
     this.container.replaceChildren();
     this.container.classList.remove("alex-os-host");
+    const previewView = this.previewView;
+    this.previewView = null;
+    if (previewView && !previewView.querySelector(".alex-os-host")) {
+      previewView.classList.remove("alex-os-dashboard-view");
+    }
   }
 
   private render(): void {
@@ -814,8 +822,12 @@ export class DashboardRenderer {
     const pulse = element("section", { className: "alex-os-pulse", ariaLabel: "Today at a glance" });
     const dayPercent = this.dayPercent();
     pulse.append(
-      this.metric("inbox", String(this.state.local?.inboxCount ?? "—"), "in Input", "purple", () => this.actions.openPath(this.settings.inputFolder)),
-      this.metric("folder-kanban", String(this.state.local?.projects.length ?? "—"), "active projects", "orange", () => this.actions.openPath(this.settings.projectFolders[0] ?? "04 Projects")),
+      this.metric("inbox", String(this.state.local?.inboxCount ?? "—"), "in Input", "purple", () => {
+        void this.actions.openPath(this.settings.inputFolder);
+      }),
+      this.metric("folder-kanban", String(this.state.local?.projects.length ?? "—"), "active projects", "orange", () => {
+        void this.actions.openPath(this.settings.projectFolders[0] ?? "04 Projects");
+      }),
       this.metric("sun-medium", `${dayPercent}%`, "of today elapsed", "yellow"),
       this.metric(
         "calendar-check",

@@ -60,12 +60,12 @@ describe("OAuth in Obsidian's CommonJS runtime", () => {
       throw new Error(`Unexpected CommonJS module: ${specifier}`);
     };
     const context = vm.createContext({
-      crypto: webcrypto,
       btoa,
       TextEncoder,
       URL,
       URLSearchParams,
       AbortController,
+      window: { crypto: webcrypto, setTimeout, clearTimeout },
       setTimeout,
       clearTimeout,
     });
@@ -136,6 +136,7 @@ describe("OAuth in Obsidian's CommonJS runtime", () => {
       URL,
       URLSearchParams,
       AbortController,
+      window: { crypto: webcrypto, setTimeout, clearTimeout },
       setTimeout,
       clearTimeout,
     });

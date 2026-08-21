@@ -1,4 +1,5 @@
 import type {
+  BookHighlightSummary,
   DailyFocusSummary,
   DailyInspirationSummary,
   FocusLink,
@@ -49,7 +50,6 @@ const MONTH_NAMES = [
 ] as const;
 
 const EXCLUDED_RECENT_SEGMENTS = new Set([
-  ".obsidian",
   "00 system",
   "90 archive",
   "addenda",
@@ -520,6 +520,100 @@ export function parseInspiration(frontmatter: unknown): DailyInspirationSummary 
   };
 }
 
+interface InspirationQuote {
+  text: string;
+  author: string;
+}
+
+function parseInspirationQuotes(frontmatter: unknown): InspirationQuote[] {
+  const record = asRecord(frontmatter);
+  if (normalizeContractValue(record?.type) !== "alex-os-inspiration") {
+    return [];
+  }
+
+  const candidates = Array.isArray(record?.quotes) ? record.quotes : [];
+  const seen = new Set<string>();
+  const quotes = candidates.flatMap((candidate): InspirationQuote[] => {
+    const quote = asRecord(candidate);
+    const text = nonEmptyString(quote?.text);
+    const author = nonEmptyString(quote?.author);
+    if (!text || !author) return [];
+
+    const key = `${text.toLocaleLowerCase("en-US")}\u0000${author.toLocaleLowerCase("en-US")}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{ text, author }];
+  });
+
+  if (quotes.length > 0) return quotes;
+
+  const text = frontmatterString(frontmatter, "quote");
+  const author = frontmatterString(frontmatter, "quote_author");
+  return text && author ? [{ text, author }] : [];
+}
+
+export function parseBookHighlightCandidates(
+  path: string,
+  frontmatter: unknown
+): BookHighlightSummary[] {
+  const record = asRecord(frontmatter);
+  if (normalizeContractValue(record?.type) !== "book-highlights") return [];
+
+  const bookTitle = nonEmptyString(record?.book_title);
+  const author = nonEmptyString(record?.author);
+  if (!bookTitle || !author || !Array.isArray(record?.alex_os_highlights)) return [];
+
+  const normalizedPath = normalizeVaultPath(path);
+  const seen = new Set<string>();
+  return record.alex_os_highlights.flatMap((value): BookHighlightSummary[] => {
+    const text = nonEmptyString(value);
+    if (!text) return [];
+
+    const key = text.toLocaleLowerCase("en-US");
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{
+      text,
+      author,
+      bookTitle,
+      path: normalizedPath,
+      sourceLabel: "Obsidian Books Library"
+    }];
+  });
+}
+
+function dailyRotationIndex(dateKey: string, itemCount: number): number | undefined {
+  const parsed = parseDateKey(dateKey);
+  if (!parsed || itemCount < 1) return undefined;
+
+  const epochDay = Math.floor(Date.UTC(parsed.year, parsed.month - 1, parsed.day) / 86_400_000);
+  return ((epochDay % itemCount) + itemCount) % itemCount;
+}
+
+export function selectDailyInspiration(
+  frontmatter: unknown,
+  bookHighlights: readonly BookHighlightSummary[],
+  dateKey: string
+): DailyInspirationSummary | undefined {
+  const quotes = parseInspirationQuotes(frontmatter);
+  const orderedHighlights = [...bookHighlights].sort(
+    (left, right) =>
+      (left.path ?? "").localeCompare(right.path ?? "") ||
+      left.text.localeCompare(right.text) ||
+      left.author.localeCompare(right.author)
+  );
+  const quoteIndex = dailyRotationIndex(dateKey, quotes.length);
+  const highlightIndex = dailyRotationIndex(dateKey, orderedHighlights.length);
+
+  if (quoteIndex !== undefined && highlightIndex !== undefined) {
+    const quote = quotes[quoteIndex];
+    const highlight = orderedHighlights[highlightIndex];
+    if (quote && highlight) return { quote, highlight };
+  }
+
+  return parseInspiration(frontmatter);
+}
+
 export function rankDailyFocusCandidates(
   candidates: readonly DailyFocusCandidate[],
   dateKey: string
@@ -581,9 +675,17 @@ export function rankJournalCandidates(
     });
 }
 
-export function isUsefulRecentNote(path: string): boolean {
+export function isUsefulRecentNote(path: string, configDir = ""): boolean {
   const normalized = normalizeVaultPath(path);
   if (!normalized.toLocaleLowerCase("en-US").endsWith(".md")) {
+    return false;
+  }
+
+  const normalizedConfigDir = normalizeVaultPath(configDir);
+  if (
+    normalizedConfigDir.length > 0
+    && isPathInsideFolder(normalized, normalizedConfigDir)
+  ) {
     return false;
   }
 
@@ -615,10 +717,11 @@ export function areaLabelForPath(path: string): string {
 
 export function rankRecentNotes(
   candidates: readonly RecentNoteCandidate[],
-  limit: number
+  limit: number,
+  configDir = ""
 ): RecentNoteSummary[] {
   return candidates
-    .filter((candidate) => isUsefulRecentNote(candidate.path))
+    .filter((candidate) => isUsefulRecentNote(candidate.path, configDir))
     .sort(
       (left, right) =>
         right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path)

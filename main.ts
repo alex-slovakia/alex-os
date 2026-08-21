@@ -101,6 +101,10 @@ function mergeSettings(value: unknown): AlexOsSettings {
     inputFolder: settingString(loaded.inputFolder, DEFAULT_SETTINGS.inputFolder),
     dailyFocusFolder: settingString(loaded.dailyFocusFolder, DEFAULT_SETTINGS.dailyFocusFolder),
     inspirationPath: settingString(loaded.inspirationPath, DEFAULT_SETTINGS.inspirationPath),
+    bookHighlightsFolder: settingString(
+      loaded.bookHighlightsFolder,
+      DEFAULT_SETTINGS.bookHighlightsFolder
+    ),
     journalRoot: settingString(loaded.journalRoot, DEFAULT_SETTINGS.journalRoot),
     journalIndexPath: settingString(loaded.journalIndexPath, DEFAULT_SETTINGS.journalIndexPath),
     calendarCachePath: settingString(loaded.calendarCachePath, DEFAULT_SETTINGS.calendarCachePath),
@@ -171,10 +175,10 @@ class CaptureModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText("Capture to Input");
+    this.titleEl.setText("Capture to input");
     this.contentEl.addClass("alex-os-capture-modal");
     const copy = this.contentEl.createEl("p", {
-      text: "Save a Markdown capture directly to 01 Input."
+      text: "Save a Markdown capture directly to the configured input folder."
     });
     copy.addClass("setting-item-description");
     const label = this.contentEl.createEl("label", {
@@ -269,7 +273,7 @@ export default class AlexOsPlugin extends Plugin {
     this.addCommands();
     this.registerVaultRefreshEvents();
     this.registerDomEvent(document, "visibilitychange", () => {
-      if (document.visibilityState === "visible") void this.refreshCalendar(false);
+      if (document.visibilityState === "visible") void this.refreshAll(false);
     });
     this.registerEvent(
       this.app.workspace.on("file-open", (file) => {
@@ -392,7 +396,7 @@ export default class AlexOsPlugin extends Plugin {
       refreshAll: (force) => this.refreshAll(force),
       capture: async (text) => {
         const path = await this.vaultActions.capture(text);
-        new Notice("✓ Captured to Input");
+        new Notice("Captured to input");
         await this.refreshLocal();
         return path;
       },
@@ -497,7 +501,7 @@ export default class AlexOsPlugin extends Plugin {
     if (this.pollingTimer !== null) window.clearInterval(this.pollingTimer);
     this.pollingTimer = window.setInterval(
       () => {
-        void this.refreshCalendar(false);
+        void this.refreshAll(false);
       },
       this.settings.refreshIntervalMinutes * 60_000
     );
@@ -515,7 +519,8 @@ export default class AlexOsPlugin extends Plugin {
         connected: this.calendarService.getState().connected,
         cachePath: this.settings.calendarCachePath,
         filePath: file.path,
-        previousPath
+        previousPath,
+        configDir: this.app.vault.configDir
       })) {
         this.scheduleCalendarCacheRefresh();
       }
@@ -557,12 +562,12 @@ export default class AlexOsPlugin extends Plugin {
   private addCommands(): void {
     this.addCommand({
       id: "open-home-dashboard",
-      name: "Open Home dashboard",
+      name: "Open home dashboard",
       callback: () => void this.openHome()
     });
     this.addCommand({
       id: "capture-to-input",
-      name: "Capture to Input",
+      name: "Capture to input",
       callback: () => new CaptureModal(this.app, async (text) => {
         await this.actions().capture(text);
       }).open()

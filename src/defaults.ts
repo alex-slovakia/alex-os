@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS: AlexOsSettings = {
   projectFolders: ["04 Projects"],
   dailyFocusFolder: "05 Records/Daily Focus",
   inspirationPath: "00 System/Alex OS Inspiration.md",
+  bookHighlightsFolder: "02 Sources/Books/Highlights",
   journalRoot: "05 Records/Journal",
   journalIndexPath: "05 Records/Journal/Journal Index.md",
   calendarCachePath: "00 System/Alex OS/Cache/Calendar.json",

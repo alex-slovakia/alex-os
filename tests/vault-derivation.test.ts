@@ -9,6 +9,7 @@ import {
   isUsefulRecentNote,
   parseDailyFocus,
   parseDateKey,
+  parseBookHighlightCandidates,
   parseInspiration,
   parseProjectCandidate,
   parseTomorrowPriorities,
@@ -17,6 +18,7 @@ import {
   rankJournalCandidates,
   rankRecentNotes,
   sanitizeNoteTitle,
+  selectDailyInspiration,
   toLocalDateKey
 } from "../src/vault/pure";
 
@@ -43,6 +45,47 @@ describe("daily book inspiration", () => {
         sourceLabel: "Sample library"
       }
     });
+  });
+
+  it("advances both the quote and the curated book highlight on each local date", () => {
+    const source = {
+      type: "alex-os-inspiration",
+      quotes: [
+        { text: "First reminder.", author: "Author One" },
+        { text: "Second reminder.", author: "Author Two" },
+        { text: "Third reminder.", author: "Author Three" },
+      ],
+    };
+    const highlights = [
+      ...parseBookHighlightCandidates("02 Sources/Books/Highlights/First.md", {
+        type: "book-highlights",
+        book_title: "First Book",
+        author: "First Writer",
+        alex_os_highlights: ["First useful book highlight."],
+      }),
+      ...parseBookHighlightCandidates("02 Sources/Books/Highlights/Second.md", {
+        type: "book-highlights",
+        book_title: "Second Book",
+        author: "Second Writer",
+        alex_os_highlights: ["Second useful book highlight."],
+      }),
+      ...parseBookHighlightCandidates("02 Sources/Books/Highlights/Third.md", {
+        type: "book-highlights",
+        book_title: "Third Book",
+        author: "Third Writer",
+        alex_os_highlights: ["Third useful book highlight."],
+      }),
+    ];
+
+    const today = selectDailyInspiration(source, highlights, "2026-08-21");
+    const tomorrow = selectDailyInspiration(source, highlights, "2026-08-22");
+
+    expect(today).toBeDefined();
+    expect(tomorrow).toBeDefined();
+    expect(tomorrow?.quote).not.toEqual(today?.quote);
+    expect(tomorrow?.highlight).not.toEqual(today?.highlight);
+    expect(selectDailyInspiration(source, [...highlights].reverse(), "2026-08-22"))
+      .toEqual(tomorrow);
   });
 });
 
@@ -233,6 +276,17 @@ describe("local dates and canonical dated paths", () => {
 });
 
 describe("recent-note filtering", () => {
+  it("excludes the actual Vault.configDir without assuming its name", () => {
+    expect(isUsefulRecentNote(
+      "_vault-config/plugins/alex-os/Release Notes.md",
+      "_vault-config"
+    )).toBe(false);
+    expect(isUsefulRecentNote(
+      "_vault-configurable/Useful.md",
+      "_vault-config"
+    )).toBe(true);
+  });
+
   it.each([
     "00 System/Wiki-Schema.md",
     "90 Archive/Old Project.md",

@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { webcrypto } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/calendar/obsidian-adapter", () => ({
   isObsidianDesktop: () => true,
@@ -33,6 +34,26 @@ function response(status: number, json: unknown): RequestUrlResponse {
 
 function requestUrl(request: RequestUrlParam | string): string {
   return typeof request === "string" ? request : request.url;
+}
+
+function requestBody(request: RequestUrlParam): string {
+  if (typeof request.body !== "string") {
+    throw new Error("Expected a URL-encoded string request body.");
+  }
+  return request.body;
+}
+
+function cacheSyncedAt(files: ReadonlyMap<string, string>): string {
+  const parsed: unknown = JSON.parse(files.get(CACHE_PATH) ?? "{}");
+  if (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "syncedAt" in parsed &&
+    typeof parsed.syncedAt === "string"
+  ) {
+    return parsed.syncedAt;
+  }
+  throw new Error("Expected the Calendar cache to contain syncedAt.");
 }
 
 function settings(): Pick<
@@ -159,7 +180,29 @@ function deferred<T>(): {
 }
 
 describe("CalendarService sync", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.stubGlobal("window", { crypto: webcrypto });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("hashes private identifiers with the current window's Web Crypto API", async () => {
+    const digest = vi.fn(async () => new Uint8Array([0xab, 0xcd]).buffer);
+    vi.stubGlobal("window", { crypto: { subtle: { digest } } });
+
+    await expect(hashCalendarIdentifier("private-id")).resolves.toBe("abcd");
+    expect(digest).toHaveBeenCalledOnce();
+  });
+
+  it("reports the plugin's current minimum Obsidian version when SecretStorage is unavailable", () => {
+    const harness = createHarness();
+    (harness.app as unknown as { secretStorage?: unknown }).secretStorage = undefined;
+    const service = new CalendarService(harness.app, settings());
+
+    expect(() => service.hasClientSecret()).toThrow(
+      "Alex OS Calendar requires Obsidian 1.13.0 or newer.",
+    );
+  });
 
   it("coalesces syncs, paginates, recovers 410 per calendar, and never writes raw IDs", async () => {
     const files = new Map<string, string>();
@@ -371,13 +414,13 @@ describe("CalendarService sync", () => {
     });
     await firstService.initialize();
     await firstService.sync();
-    const persistedSyncedAt = JSON.parse(harness.files.get(CACHE_PATH) ?? "{}").syncedAt as string;
+    const persistedSyncedAt = cacheSyncedAt(harness.files);
     expect(harness.controls.cacheWrites).toBe(1);
 
     now = new Date(2026, 7, 20, 10, 5);
     await firstService.sync();
     expect(harness.controls.cacheWrites).toBe(1);
-    expect(JSON.parse(harness.files.get(CACHE_PATH) ?? "{}").syncedAt).toBe(persistedSyncedAt);
+    expect(cacheSyncedAt(harness.files)).toBe(persistedSyncedAt);
     expect(harness.secrets.get(CALENDAR_SECRET_STORAGE_KEY)).toContain("token-2");
     expect(firstService.getState().lastCheckedAt).toBe(now.toISOString());
 
@@ -660,6 +703,24 @@ describe("CalendarService sync", () => {
     });
     expect(service.getAvailableCalendars()).toEqual(cached.calendars);
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("uses Vault.configDir to reject a cache path before touching the adapter", async () => {
+    const harness = createHarness();
+    (harness.app.vault as { configDir: string }).configDir = "_vault-config";
+    harness.controls.failCacheExists = true;
+    const config = settings();
+    config.calendarCachePath = "_vault-config/plugins/alex-os/data.json";
+    const service = new CalendarService(harness.app, config, {
+      isDesktop: () => false,
+    });
+
+    await expect(service.initialize()).resolves.toEqual({
+      phase: "error",
+      connected: false,
+      cache: null,
+      error: "Calendar cache path is empty.",
+    });
   });
 
   it("reloads a newly synced cache on mobile without network or storage writes", async () => {
@@ -947,7 +1008,7 @@ describe("CalendarService sync", () => {
         expect(typeof request).toBe("object");
         const param = request as RequestUrlParam;
         expect(param.contentType).toBe("application/x-www-form-urlencoded");
-        const form = new URLSearchParams(String(param.body));
+        const form = new URLSearchParams(requestBody(param));
         expect(form.get("client_id")).toBe(configuredSettings.googleClientId);
         expect(form.get("client_secret")).toBe(CLIENT_SECRET_FIXTURE);
         expect(form.get("code")).toBe("one-time-code");
@@ -1000,7 +1061,9 @@ describe("CalendarService sync", () => {
     await service.listCalendars();
 
     expect(tokenRequests).toHaveLength(1);
-    const form = new URLSearchParams(String(tokenRequests[0]?.body));
+    const tokenRequest = tokenRequests[0];
+    if (!tokenRequest) throw new Error("Expected one token request.");
+    const form = new URLSearchParams(requestBody(tokenRequest));
     expect(form.get("client_secret")).toBe(CLIENT_SECRET_FIXTURE);
     expect(form.get("refresh_token")).toBe("refresh-private");
     expect(form.get("grant_type")).toBe("refresh_token");
@@ -1015,7 +1078,7 @@ describe("CalendarService sync", () => {
       const url = requestUrl(request);
       if (url.includes("oauth2.googleapis.com/token")) {
         if (typeof request === "string") throw new Error("Expected structured token request.");
-        tokenForms.push(new URLSearchParams(String(request.body)));
+        tokenForms.push(new URLSearchParams(requestBody(request)));
         if (tokenForms.length === 1) {
           firstTokenStarted.resolve();
           return firstTokenResponse.promise;

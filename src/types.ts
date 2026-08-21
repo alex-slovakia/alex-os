@@ -125,6 +125,7 @@ export interface AlexOsSettings {
   projectFolders: string[];
   dailyFocusFolder: string;
   inspirationPath: string;
+  bookHighlightsFolder: string;
   journalRoot: string;
   journalIndexPath: string;
   calendarCachePath: string;

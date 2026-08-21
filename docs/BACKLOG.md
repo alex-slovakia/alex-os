@@ -1,6 +1,6 @@
 # Roadmap
 
-Alex OS 0.2.0 implements a mobile-compatible local-first Home dashboard for desktop, iPhone, iPad, and Android, with automated mobile bundle and runtime coverage.
+Alex OS 0.2.1 implements a mobile-compatible local-first Home dashboard for desktop, iPhone, iPad, and Android, with automated mobile bundle and runtime coverage.
 
 Google authorization and direct API synchronization remain desktop-only. Mobile reads the reduced private Calendar cache delivered by the user's vault sync provider.
 
@@ -13,7 +13,6 @@ Physical-device verification on iPhone, iPad, and Android has not yet been compl
 - Add synthetic dark and light screenshot fixtures.
 - Expand keyboard, touch, and screen-reader verification.
 - Expand the physical-device test matrix across iPhone, iPad, and Android versions.
-- Add release checksum automation.
 - Improve cache conflict diagnostics for users with multiple vault sync engines.
 
 ## Calendar

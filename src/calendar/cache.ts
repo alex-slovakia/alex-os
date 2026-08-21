@@ -170,7 +170,7 @@ export function calendarCacheNeedsWrite(
 export async function calendarCacheGeneration(cache: CalendarCache): Promise<string> {
   const safe = sanitizeCalendarCache(cache);
   if (!safe) throw new Error("Cannot fingerprint an invalid calendar cache.");
-  const digest = await globalThis.crypto.subtle.digest(
+  const digest = await window.crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(JSON.stringify(safe)),
   );
@@ -179,12 +179,21 @@ export async function calendarCacheGeneration(cache: CalendarCache): Promise<str
     .join("");
 }
 
-export function normalizeCalendarCachePath(path: string): string {
+export function normalizeCalendarCachePath(path: string, configDir = ""): string {
   const normalized = path.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "").replace(/\/{2,}/g, "/");
   const segments = normalized.split("/");
+  const normalizedConfigDir = configDir
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/{2,}/g, "/")
+    .toLocaleLowerCase("en-US");
+  const lowercasePath = normalized.toLocaleLowerCase("en-US");
   if (
     !normalized
-    || segments[0]?.toLowerCase() === ".obsidian"
+    || (normalizedConfigDir.length > 0 && (
+      lowercasePath === normalizedConfigDir
+      || lowercasePath.startsWith(`${normalizedConfigDir}/`)
+    ))
     || segments.some((segment) => (
       segment === "."
       || segment === ".."
@@ -201,11 +210,15 @@ export function calendarCachePathMatches(
   configuredPath: string,
   currentPath: string,
   previousPath?: string,
+  configDir = "",
 ): boolean {
-  const configured = normalizeCalendarCachePath(configuredPath);
+  const configured = normalizeCalendarCachePath(configuredPath, configDir);
   if (!configured) return false;
-  return normalizeCalendarCachePath(currentPath) === configured
-    || (previousPath !== undefined && normalizeCalendarCachePath(previousPath) === configured);
+  return normalizeCalendarCachePath(currentPath, configDir) === configured
+    || (
+      previousPath !== undefined
+      && normalizeCalendarCachePath(previousPath, configDir) === configured
+    );
 }
 
 export class CalendarCacheStore {
@@ -214,8 +227,9 @@ export class CalendarCacheStore {
   constructor(
     private readonly adapter: CalendarCacheAdapter,
     path: string,
+    configDir = "",
   ) {
-    this.path = normalizeCalendarCachePath(path);
+    this.path = normalizeCalendarCachePath(path, configDir);
   }
 
   get cachePath(): string {

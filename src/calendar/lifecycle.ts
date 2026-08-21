@@ -11,6 +11,7 @@ export interface CalendarCacheVaultEvent extends CalendarRuntimeState {
   cachePath: string;
   filePath: string;
   previousPath?: string;
+  configDir?: string;
 }
 
 export function getCalendarRefreshAction(state: CalendarRuntimeState): CalendarRefreshAction {
@@ -20,6 +21,11 @@ export function getCalendarRefreshAction(state: CalendarRuntimeState): CalendarR
 export function shouldReloadCalendarCacheForVaultEvent(event: CalendarCacheVaultEvent): boolean {
   return (
     getCalendarRefreshAction(event) === "load-cache"
-    && calendarCachePathMatches(event.cachePath, event.filePath, event.previousPath)
+    && calendarCachePathMatches(
+      event.cachePath,
+      event.filePath,
+      event.previousPath,
+      event.configDir,
+    )
   );
 }

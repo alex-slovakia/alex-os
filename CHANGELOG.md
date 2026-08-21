@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 — 2026-08-21
+
+- Migrated settings to Obsidian's searchable declarative settings API and raised the minimum supported Obsidian version to 1.13.0.
+- Removed review warnings around global browser access, vault configuration paths, raw DOM element creation, floating promises, and deprecated destructive-button styling.
+- Replaced broad vault enumeration with targeted folder traversal while preserving dashboard discovery behavior.
+- Added deterministic daily rotation for attributed quotes and curated local book highlights, including automatic after-midnight refresh and a legacy-format fallback.
+- Removed review-incompatible CSS declarations while preserving desktop, phone, and iPad layouts.
+- Added a tag-driven release workflow with GitHub artifact attestations for <code>main.js</code> and <code>styles.css</code>.
+- Limited GitHub releases to the three files supported by Obsidian Community Plugins; release ZIP bundles are no longer published.
+
 ## 0.2.0 — 2026-08-20
 
 - Implemented mobile-compatible local dashboard behavior and layouts for desktop, iPhone, iPad, and Android.

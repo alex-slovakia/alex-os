@@ -1,14 +1,14 @@
 ---
 type: alex-os-inspiration
-quote: Begin; the next step becomes clearer through motion.
-quote_author: Alex OS sample
-highlight: Small steps, repeated with care, turn plans into systems.
-highlight_author: Example Author
-highlight_book: The Example Book
-highlight_path: 02 Sources/Books/The Example Book.md
-highlight_source: Sample library
+quotes:
+  - text: Begin; the next step becomes clearer through motion.
+    author: Alex OS sample
+  - text: Make the useful action easy to repeat.
+    author: Alex OS sample
+  - text: Build a system that makes tomorrow lighter.
+    author: Alex OS sample
 ---
 
 # Alex OS Inspiration
 
-Replace the synthetic text with one short, properly attributed quote and one short highlight from your own library.
+Replace these synthetic entries with short, properly attributed quotes. Alex OS chooses one per local date and reads the book side from the configured book-highlights folder.
