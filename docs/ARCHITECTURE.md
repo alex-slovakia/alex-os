@@ -12,7 +12,7 @@ Desktop Google sync ──> reduced vault cache ──────────�
                                   └──> mobile/iPad cache reader
 ~~~
 
-The 0.2.0 local dashboard is implemented for desktop, iPhone, iPad, and Android. Automated bundle and runtime tests cover mobile loading; manual physical-device verification remains pending.
+The 0.2.1 local dashboard is implemented for Obsidian 1.13.0 or newer on desktop, iPhone, iPad, and Android. Automated bundle and runtime tests cover mobile loading; manual physical-device verification remains pending.
 
 The renderer never turns HTML into the source of truth. Notes and frontmatter remain readable when the plugin is disabled.
 
@@ -23,14 +23,14 @@ The renderer never turns HTML into the source of truth. Notes and frontmatter re
 | Hero and pulse | Local time, snapshot counts, Calendar state |
 | Today schedule | Reduced Calendar cache |
 | Main focus | Dated daily-focus note, with journal fallback |
-| Inspiration | Strict <code>alex-os-inspiration</code> frontmatter |
+| Inspiration | Strict <code>alex-os-inspiration</code> quote pool plus curated local <code>book-highlights</code> notes |
 | Active projects | Strict project frontmatter |
 | Journal | Configured dated folder convention |
 | Quick navigation | Verified configured paths |
 | Recent notes | Vault metadata with system/cache exclusions |
 | Quick capture | New Markdown files in the configured input folder |
 
-Vault refreshes are event-driven and debounced. Calendar polling does not rescan the full vault.
+Vault refreshes are event-driven and debounced. The periodic refresh reads only configured vault subtrees and exact paths; it also advances local-date content after midnight without whole-vault enumeration.
 
 ## Calendar boundary
 
@@ -55,20 +55,29 @@ The cache can contain user-controlled personal text, including event titles, lab
 
 ## Inspiration contract
 
-The configured note must provide exactly the expected type plus seven non-empty content fields:
+The configured inspiration note supplies a pool of attributed quotes:
 
 ~~~yaml
 type: alex-os-inspiration
-quote: Begin; the next step becomes clearer through motion.
-quote_author: Alex OS sample
-highlight: Small steps, repeated with care, turn plans into systems.
-highlight_author: Example Author
-highlight_book: The Example Book
-highlight_path: 02 Sources/Books/The Example Book.md
-highlight_source: Sample library
+quotes:
+  - text: Begin; the next step becomes clearer through motion.
+    author: Alex OS sample
+  - text: Make the useful action easy to repeat.
+    author: Alex OS sample
 ~~~
 
-The source label is text, not a network integration. Invalid or unresolved content is omitted safely; no quote or attribution is fabricated.
+Each Markdown note below the configured book-highlights folder can supply curated candidates:
+
+~~~yaml
+type: book-highlights
+book_title: The Example Book
+author: Example Author
+alex_os_highlights:
+  - Small steps, repeated with care, turn plans into systems.
+  - A second short highlight for tomorrow.
+~~~
+
+Selection uses the local date, so it is stable for a day and advances daily when each pool has at least two entries. The older seven-field inspiration contract remains a backwards-compatible fallback. Invalid or unresolved content is omitted safely; no quote, book text, or attribution is fabricated.
 
 ## Lifecycle
 
@@ -76,7 +85,7 @@ The source label is text, not a network integration. Invalid or unresolved conte
 - OAuth, direct sync, disconnect, credential rotation, and disposal are operation-fenced on desktop.
 - Mobile owns no Google session; it reloads the reduced cache when the synchronized vault copy changes.
 - Vault events trigger a debounced local snapshot.
-- Desktop polling updates Google Calendar state; mobile polling only checks the vault cache.
+- Periodic polling refreshes the scoped local snapshot on every platform; desktop also updates Google Calendar, while mobile only reloads its reduced vault cache.
 - Renderers subscribe to plugin state and are detached with their Markdown render children.
 
 ## Threat model

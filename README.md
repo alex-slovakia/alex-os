@@ -9,7 +9,7 @@ A colorful, local-first dashboard for focus, projects, journaling, quick capture
 [![Release](https://img.shields.io/github/v/release/alex-slovakia/alex-os?display_name=tag&sort=semver)](https://github.com/alex-slovakia/alex-os/releases)
 [![CI](https://github.com/alex-slovakia/alex-os/actions/workflows/ci.yml/badge.svg)](https://github.com/alex-slovakia/alex-os/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-8b5cf6.svg)](LICENSE)
-[![Obsidian](https://img.shields.io/badge/Obsidian-1.11.4%2B-7c3aed)](https://obsidian.md)
+[![Obsidian](https://img.shields.io/badge/Obsidian-1.13.0%2B-7c3aed)](https://obsidian.md)
 
 ![Illustrated Alex OS dashboard preview with synthetic data](docs/assets/dashboard-preview.svg)
 
@@ -25,11 +25,11 @@ A colorful, local-first dashboard for focus, projects, journaling, quick capture
 | Active projects | Notes marked <code>type: project</code> and <code>status: active</code> |
 | Journal | Your configured dated journal folder |
 | Quick capture | New Markdown notes in your input folder |
-| Inspiration | One strict, user-editable Markdown note |
+| Inspiration | A quote-pool note plus curated local book-highlight notes |
 | Recent activity | Useful recently modified vault notes |
 | Calendar | Optional reduced Google Calendar cache |
 
-Alex OS 0.2.0 implements the full local dashboard for Obsidian on desktop, iPhone, iPad, and Android. It supports light and dark themes, reduced motion, responsive layouts, and useful operation without an online service.
+Alex OS 0.2.1 implements the full local dashboard for Obsidian 1.13.0 or newer on desktop, iPhone, iPad, and Android. It supports light and dark themes, reduced motion, responsive layouts, searchable settings, and useful operation without an online service.
 
 Automated bundle and runtime tests cover mobile loading and Calendar cache behavior. Manual verification on physical iPhone, iPad, and Android devices remains pending in the release checklist.
 
@@ -94,17 +94,28 @@ next_action: Ship the first useful slice
 ~~~yaml
 ---
 type: alex-os-inspiration
-quote: Begin; the next step becomes clearer through motion.
-quote_author: Alex OS sample
-highlight: Small steps, repeated with care, turn plans into systems.
-highlight_author: Example Author
-highlight_book: The Example Book
-highlight_path: 02 Sources/Books/The Example Book.md
-highlight_source: Sample library
+quotes:
+  - text: Begin; the next step becomes clearer through motion.
+    author: Alex OS sample
+  - text: Make the useful action easy to repeat.
+    author: Alex OS sample
 ---
 ~~~
 
-The inspiration source is ordinary Markdown. Import or curate your own short book highlight; Alex OS never needs a Notion credential.
+Put migrated or hand-curated highlight notes in the configured book-highlights folder:
+
+~~~yaml
+---
+type: book-highlights
+book_title: The Example Book
+author: Example Author
+alex_os_highlights:
+  - Small steps, repeated with care, turn plans into systems.
+  - A second short highlight for tomorrow.
+---
+~~~
+
+Alex OS deterministically chooses one attributed quote and one library highlight from the local date. Both stay stable during the day and advance after midnight; the normal refresh timer also refreshes local modules. Everything remains ordinary Markdown, so importing from Notion is optional and Alex OS never needs a Notion credential. The earlier single-quote/seven-field format remains a safe fallback.
 
 ## Optional Google Calendar
 
@@ -126,6 +137,8 @@ npm run check
 ~~~
 
 The check runs ESLint, strict TypeScript, a production esbuild bundle, and the full Vitest suite.
+
+Tagged releases are built from source in GitHub Actions. The workflow publishes only <code>main.js</code>, <code>manifest.json</code>, and <code>styles.css</code>, and creates GitHub artifact attestations for the executable and stylesheet.
 
 ## Documentation
 

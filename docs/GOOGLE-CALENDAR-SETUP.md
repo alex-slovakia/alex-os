@@ -1,6 +1,6 @@
 # Google Calendar setup
 
-Google Calendar is optional. Alex OS 0.2.0 implements the complete local dashboard for desktop, iPhone, iPad, and Android without it.
+Google Calendar is optional. Alex OS 0.2.1 implements the complete local dashboard for desktop, iPhone, iPad, and Android without it.
 
 Google OAuth and direct Calendar API synchronization run only in desktop Obsidian. Mobile Alex OS reads a reduced cache from the vault and never connects to Google.
 
@@ -8,7 +8,7 @@ Automated tests cover the mobile runtime and cache boundary. Manual verification
 
 ## What you need
 
-- Desktop Obsidian 1.11.4 or newer for authorization and direct synchronization.
+- Desktop Obsidian 1.13.0 or newer for authorization and direct synchronization.
 - Permission to create a Google Cloud project.
 - A Google OAuth client of type **Desktop app**.
 

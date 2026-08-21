@@ -8,6 +8,7 @@
   container-type: inline-size;
 }
 
+.markdown-preview-view.alex-os-dashboard-view .markdown-preview-sizer,
 .alex-os-home.markdown-preview-view .markdown-preview-sizer,
 .alex-os-home .markdown-preview-view .markdown-preview-sizer,
 .markdown-preview-view.alex-os-home .markdown-preview-sizer {
@@ -23,15 +24,17 @@
 }
 
 /* Home is an application surface: keep Obsidian's note chrome out of the cockpit. */
+.markdown-preview-view.alex-os-dashboard-view .inline-title,
+.markdown-preview-view.alex-os-dashboard-view .metadata-container,
 .alex-os-home .inline-title,
 .alex-os-home .metadata-container {
-  display: none !important;
+  display: none;
 }
 
-.markdown-preview-view.alex-os-home
-  .markdown-preview-section:has(.alex-os-host) > .el-h1,
-.markdown-preview-view.alex-os-home
-  .markdown-preview-section:has(.alex-os-host) > .el-blockquote {
+.markdown-preview-view.alex-os-dashboard-view
+  .markdown-preview-section > .el-h1,
+.markdown-preview-view.alex-os-dashboard-view
+  .markdown-preview-section > .el-blockquote {
   display: none;
 }
 
@@ -1164,16 +1167,16 @@ button.alex-os-book-highlight:focus-visible {
   color: var(--alex-yellow);
 }
 
-.alex-os-capture-input {
+.alex-os .alex-os-capture-field > .alex-os-capture-input {
   width: 100%;
   min-width: 0;
   height: 34px;
   padding: 0;
   color: var(--alex-text);
-  border: 0 !important;
-  outline: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: 12px;
 }
 
@@ -1530,7 +1533,6 @@ button.alex-os-metric:hover { background: color-mix(in srgb, var(--alex-tone) 6%
 
 .alex-os-event-dialog {
   width: min(92vw, 470px);
-  max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
   padding: 24px;
   overflow-y: auto;
@@ -1862,25 +1864,41 @@ button.alex-os-metric:hover { background: color-mix(in srgb, var(--alex-tone) 6%
 }
 .alex-os-modal-input { width: 100%; }
 .alex-os-modal-controls { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-.alex-os-visually-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
+.alex-os-capture-modal .alex-os-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alex-os *,
-  .alex-os *::before,
-  .alex-os *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .alex-os,
+  .alex-os * {
+    scroll-behavior: auto;
+  }
+
+  .alex-os .alex-os-icon-button,
+  .alex-os .alex-os-progress-fill,
+  .alex-os button.alex-os-book-highlight,
+  .alex-os .alex-os-event,
+  .alex-os .alex-os-button,
+  .alex-os .alex-os-capture-field,
+  .alex-os .alex-os-project,
+  .alex-os .alex-os-nav-link {
+    transition-duration: 0.01ms;
+  }
+
+  .alex-os .alex-os-refresh-button.is-spinning svg,
+  .alex-os .alex-os-skeleton span,
+  .alex-os:not(.alex-os--settled) .alex-os-hero,
+  .alex-os:not(.alex-os--settled) .alex-os-inspiration,
+  .alex-os:not(.alex-os--settled) .alex-os-card,
+  .alex-os:not(.alex-os--settled) .alex-os-pulse {
+    animation: none;
   }
 }

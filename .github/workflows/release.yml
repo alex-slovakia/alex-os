@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and verify
+        run: npm run check
+      - name: Verify release metadata and artifacts
+        run: node scripts/verify-release.mjs
+      - name: Attest Obsidian plugin artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            styles.css
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --verify-tag --generate-notes --title "$GITHUB_REF_NAME"

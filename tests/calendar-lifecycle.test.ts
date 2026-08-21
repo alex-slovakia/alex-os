@@ -45,4 +45,14 @@ describe("Calendar lifecycle routing", () => {
       filePath: "00 System/Alex OS/Cache/Calendar.json",
     })).toBe(false);
   });
+
+  it("uses the active Vault.configDir when screening cache event paths", () => {
+    expect(shouldReloadCalendarCacheForVaultEvent({
+      isDesktopApp: false,
+      connected: false,
+      cachePath: "_vault-config/plugins/alex-os/Calendar.json",
+      filePath: "_vault-config/plugins/alex-os/Calendar.json",
+      configDir: "_vault-config",
+    })).toBe(false);
+  });
 });

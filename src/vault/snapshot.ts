@@ -1,4 +1,4 @@
-import { MetadataCache, TFile, Vault } from "obsidian";
+import type { MetadataCache, TFile, Vault } from "obsidian";
 
 import type {
   AlexOsSettings,
@@ -15,18 +15,20 @@ import {
   isPathInsideFolder,
   isStrictActiveProject,
   normalizeVaultPath,
+  parseBookHighlightCandidates,
   parseDailyFocus,
-  parseInspiration,
   parseProjectCandidate,
   parseTomorrowPriorities,
   previousLocalDateKey,
   rankDailyFocusCandidates,
   rankJournalCandidates,
   rankRecentNotes,
+  selectDailyInspiration,
   toLocalDateKey,
   type DailyFocusCandidate,
   type JournalCandidate
 } from "./pure";
+import { collectConfiguredMarkdownFiles, isVaultFile } from "./scoped-files";
 
 export type VaultSnapshotSettings = Pick<
   AlexOsSettings,
@@ -34,6 +36,7 @@ export type VaultSnapshotSettings = Pick<
   | "projectFolders"
   | "dailyFocusFolder"
   | "inspirationPath"
+  | "bookHighlightsFolder"
   | "journalRoot"
   | "journalIndexPath"
   | "recentLimit"
@@ -69,13 +72,39 @@ export class VaultSnapshotService {
   }
 
   async getSnapshot(at = this.now()): Promise<VaultSnapshot> {
-    const markdownFiles = this.vault.getMarkdownFiles();
+    const markdownFiles = collectConfiguredMarkdownFiles(this.vault, [
+      this.settings.inputFolder,
+      ...this.settings.projectFolders,
+      this.settings.dailyFocusFolder,
+      this.settings.bookHighlightsFolder,
+      this.settings.journalRoot,
+      ...this.settings.quickLinks.map((link) => link.path),
+    ]);
     const dateKey = toLocalDateKey(at);
 
     const [projects, focus] = await Promise.all([
       this.readProjects(markdownFiles),
       this.readFocus(markdownFiles, at)
     ]);
+    const inspiration = this.readInspiration(markdownFiles, dateKey);
+    const quickLinks = this.readVerifiedQuickLinks();
+    const recentFiles = new Map(
+      markdownFiles
+        .filter(
+          (file) => !isPathInsideFolder(file.path, this.settings.bookHighlightsFolder)
+        )
+        .map((file) => [file.path, file])
+    );
+    for (const path of [
+      this.settings.inspirationPath,
+      this.settings.journalIndexPath,
+      inspiration?.highlight.path,
+      ...quickLinks.map((link) => link.path),
+    ]) {
+      if (!path) continue;
+      const target = resolveVaultTarget(this.vault, this.metadataCache, path);
+      if (isVaultFile(target)) recentFiles.set(target.path, target);
+    }
 
     return {
       inboxCount: markdownFiles.filter((file) =>
@@ -83,17 +112,18 @@ export class VaultSnapshotService {
       ).length,
       projects,
       focus,
-      inspiration: this.readInspiration(),
+      inspiration,
       journal: this.readJournal(markdownFiles, dateKey),
       recent: rankRecentNotes(
-        markdownFiles.map((file) => ({
+        [...recentFiles.values()].map((file) => ({
           path: file.path,
           basename: file.basename,
           modifiedAt: file.stat.mtime
         })),
-        this.settings.recentLimit
+        this.settings.recentLimit,
+        this.vault.configDir
       ),
-      quickLinks: this.readVerifiedQuickLinks(),
+      quickLinks,
       refreshedAt: at.getTime()
     };
   }
@@ -160,7 +190,7 @@ export class VaultSnapshotService {
 
       for (const entry of yesterdayEntries) {
         const file = this.vault.getAbstractFileByPath(entry.path);
-        if (!(file instanceof TFile)) {
+        if (!isVaultFile(file)) {
           continue;
         }
 
@@ -181,15 +211,30 @@ export class VaultSnapshotService {
     return { focusNotes: [], source: "empty" };
   }
 
-  private readInspiration(): DailyInspirationSummary | undefined {
+  private readInspiration(
+    files: readonly TFile[],
+    dateKey: string
+  ): DailyInspirationSummary | undefined {
     const source = resolveVaultTarget(
       this.vault,
       this.metadataCache,
       this.settings.inspirationPath
     );
-    if (!(source instanceof TFile)) return undefined;
+    if (!isVaultFile(source)) return undefined;
 
-    const parsed = parseInspiration(this.metadataCache.getFileCache(source)?.frontmatter);
+    const highlights = files
+      .filter((file) => isPathInsideFolder(file.path, this.settings.bookHighlightsFolder))
+      .flatMap((file) =>
+        parseBookHighlightCandidates(
+          file.path,
+          this.metadataCache.getFileCache(file)?.frontmatter
+        )
+      );
+    const parsed = selectDailyInspiration(
+      this.metadataCache.getFileCache(source)?.frontmatter,
+      highlights,
+      dateKey
+    );
     if (!parsed) return undefined;
     const bookTarget = resolveVaultTarget(
       this.vault,
@@ -203,7 +248,7 @@ export class VaultSnapshotService {
         author: parsed.highlight.author,
         bookTitle: parsed.highlight.bookTitle,
         sourceLabel: parsed.highlight.sourceLabel,
-        ...(bookTarget instanceof TFile ? { path: bookTarget.path } : {})
+        ...(isVaultFile(bookTarget) ? { path: bookTarget.path } : {})
       }
     };
   }
@@ -228,7 +273,7 @@ export class VaultSnapshotService {
     return {
       date: dateKey,
       entries,
-      indexPath: indexTarget instanceof TFile ? indexTarget.path : undefined
+      indexPath: isVaultFile(indexTarget) ? indexTarget.path : undefined
     };
   }
 

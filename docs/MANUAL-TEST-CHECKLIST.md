@@ -29,7 +29,9 @@ Automated tests cover mobile bundle loading, runtime boundaries, and Calendar ca
 - [ ] Journal paths follow the configured year/month convention.
 - [ ] Recent notes exclude Home, plugin/system data, archives, logs, backups, and caches.
 - [ ] Quick links render only for resolved files or folders.
-- [ ] Valid inspiration frontmatter renders both attributed excerpts.
+- [ ] Valid inspiration and book-highlight frontmatter renders both attributed excerpts.
+- [ ] Quote and book highlight remain stable during one local day and both change on the next local date when their pools contain at least two entries.
+- [ ] An open dashboard advances its inspiration after midnight through the periodic scoped refresh.
 - [ ] Invalid or partial inspiration content disappears without a broken link or fabricated text.
 
 ## Calendar and privacy
@@ -73,6 +75,7 @@ Automated tests cover mobile bundle loading, runtime boundaries, and Calendar ca
 - [ ] The manifest permits mobile installation and the Community Plugins review reports no mobile-blocking errors.
 - [ ] The GitHub release is published, not draft.
 - [ ] <code>main.js</code>, <code>manifest.json</code>, and <code>styles.css</code> are separate assets.
-- [ ] The optional ZIP contains exactly those three files at archive root.
+- [ ] No ZIP or other unsupported release asset is attached.
+- [ ] GitHub artifact attestations verify for <code>main.js</code> and <code>styles.css</code>.
 - [ ] Release assets match the checked source build by SHA-256.
 - [ ] No <code>data.json</code>, cache, source map, test, vault note, log, or credential file is present.

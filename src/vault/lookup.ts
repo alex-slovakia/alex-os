@@ -1,4 +1,4 @@
-import { MetadataCache, TAbstractFile, TFile, Vault } from "obsidian";
+import type { MetadataCache, TAbstractFile, TFile, Vault } from "obsidian";
 
 import { normalizeVaultPath } from "./pure";
 

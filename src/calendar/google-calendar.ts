@@ -229,7 +229,7 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 export async function hashCalendarIdentifier(rawId: string): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest(
+  const digest = await window.crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(`alex-os/calendar/${rawId}`),
   );
@@ -237,7 +237,7 @@ export async function hashCalendarIdentifier(rawId: string): Promise<string> {
 }
 
 async function hashEventIdentifier(rawCalendarId: string, rawEventId: string): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest(
+  const digest = await window.crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(`alex-os/event/${rawCalendarId}\u0000${rawEventId}`),
   );
@@ -1231,13 +1231,17 @@ export class CalendarService {
   }
 
   private cacheStore(): CalendarCacheStore {
-    return new CalendarCacheStore(this.app.vault.adapter, this.settings().calendarCachePath);
+    return new CalendarCacheStore(
+      this.app.vault.adapter,
+      this.settings().calendarCachePath,
+      this.app.vault.configDir,
+    );
   }
 
   private secretStorage(): SecretStorageLike {
     const storage = (this.app as App & { secretStorage?: SecretStorageLike }).secretStorage;
     if (!storage?.getSecret || !storage.setSecret) {
-      throw new GoogleAuthenticationError("Alex OS Calendar requires Obsidian 1.11.4 or newer.");
+      throw new GoogleAuthenticationError("Alex OS Calendar requires Obsidian 1.13.0 or newer.");
     }
     return storage;
   }

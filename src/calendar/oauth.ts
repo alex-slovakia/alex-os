@@ -18,7 +18,7 @@ export interface InstalledAppAuthorizationOptions {
 }
 
 function webCrypto(): Crypto {
-  const cryptoApi = globalThis.crypto;
+  const cryptoApi = window.crypto;
   if (!cryptoApi?.subtle) throw new Error("Secure Web Crypto is unavailable.");
   return cryptoApi;
 }
@@ -165,13 +165,13 @@ async function createLoopbackReceiver(expectedState: string, timeoutMs: number):
     throw new Error("Could not start the local Google authorization callback.");
   }
 
-  const timeout = globalThis.setTimeout(() => {
+  const timeout = window.setTimeout(() => {
     if (settled) return;
     settled = true;
     close();
     rejectCode(new Error("Google authorization timed out."));
   }, timeoutMs);
-  void result.finally(() => globalThis.clearTimeout(timeout)).catch(() => undefined);
+  void result.finally(() => window.clearTimeout(timeout)).catch(() => undefined);
 
   return {
     redirectUri: `http://127.0.0.1:${address.port}/oauth2/callback`,
@@ -182,7 +182,7 @@ async function createLoopbackReceiver(expectedState: string, timeoutMs: number):
 }
 
 function defaultOpenExternal(url: string): void {
-  const opened = globalThis.window?.open(url, "_blank", "noopener,noreferrer");
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
   if (opened) opened.opener = null;
 }
 

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { webcrypto } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CalendarCache } from "../src/types";
 import {
   cacheCovers,
@@ -36,6 +37,9 @@ function validCache(): CalendarCache {
 }
 
 describe("calendar cache", () => {
+  beforeEach(() => vi.stubGlobal("window", { crypto: webcrypto }));
+  afterEach(() => vi.unstubAllGlobals());
+
   it("validates a complete cache and rejects broken references and ranges", () => {
     const cache = validCache();
     expect(isCalendarCache(cache)).toBe(true);
@@ -102,6 +106,14 @@ describe("calendar cache", () => {
     );
   });
 
+  it("fingerprints cache data with the current window's Web Crypto API", async () => {
+    const digest = vi.fn(async () => new Uint8Array([0xab, 0xcd]).buffer);
+    vi.stubGlobal("window", { crypto: { subtle: { digest } } });
+
+    await expect(calendarCacheGeneration(validCache())).resolves.toBe("abcd");
+    expect(digest).toHaveBeenCalledOnce();
+  });
+
   it("creates parent folders and writes sanitized JSON through the vault adapter", async () => {
     const files = new Map<string, string>();
     const folders = new Set<string>();
@@ -143,6 +155,12 @@ describe("calendar cache", () => {
       "Archive/Calendar.json",
       "00 System/Alex OS/Cache/Calendar.json",
     )).toBe(true);
+    expect(calendarCachePathMatches(
+      "_vault-config/plugins/alex-os/data.json",
+      "_vault-config/plugins/alex-os/data.json",
+      undefined,
+      "_vault-config",
+    )).toBe(false);
   });
 
   it("ignores an oversized cache before parsing it on memory-constrained devices", async () => {
@@ -199,13 +217,30 @@ describe("calendar cache", () => {
     expect(writes).toBe(0);
   });
 
-  it("rejects cache paths that can escape or overwrite protected vault data", () => {
+  it("rejects cache paths that can escape or overwrite the vault's configured settings folder", () => {
     expect(normalizeCalendarCachePath("C:\\Users\\Example\\Calendar.json")).toBe("");
     expect(normalizeCalendarCachePath("Home.md:calendar-cache")).toBe("");
-    expect(normalizeCalendarCachePath(".obsidian/plugins/alex-os/data.json")).toBe("");
+    expect(normalizeCalendarCachePath("_vault-config/plugins/alex-os/data.json", "_vault-config")).toBe("");
     expect(normalizeCalendarCachePath("https://example.com/Calendar.json")).toBe("");
     expect(normalizeCalendarCachePath("00 System/Alex OS/Cache/Calendar.json")).toBe(
       "00 System/Alex OS/Cache/Calendar.json",
     );
+  });
+
+  it("never reads or writes a cache inside the vault's configured settings folder", async () => {
+    let adapterCalls = 0;
+    const store = new CalendarCacheStore({
+      exists: async () => { adapterCalls += 1; return true; },
+      mkdir: async () => { adapterCalls += 1; },
+      read: async () => { adapterCalls += 1; return ""; },
+      write: async () => { adapterCalls += 1; },
+    }, "_vault-config/plugins/alex-os/data.json", "_vault-config");
+
+    await expect(store.readResult()).resolves.toEqual({
+      cache: null,
+      error: "Calendar cache path is empty.",
+    });
+    await expect(store.write(validCache())).rejects.toThrow("Calendar cache path is invalid.");
+    expect(adapterCalls).toBe(0);
   });
 });

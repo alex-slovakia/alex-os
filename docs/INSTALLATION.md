@@ -1,6 +1,6 @@
 # Installation
 
-Alex OS 0.2.0 implements the full local dashboard for Obsidian 1.11.4 or newer on desktop, iPhone, iPad, and Android.
+Alex OS 0.2.1 implements the full local dashboard for Obsidian 1.13.0 or newer on desktop, iPhone, iPad, and Android.
 
 Automated bundle and runtime checks cover mobile loading and Calendar cache behavior. Manual verification on physical iPhone, iPad, and Android devices remains pending in the release checklist.
 
@@ -22,6 +22,8 @@ Use this option for a manual desktop installation.
    - <code>main.js</code>
    - <code>manifest.json</code>
    - <code>styles.css</code>
+
+   GitHub publishes artifact attestations for <code>main.js</code> and <code>styles.css</code>. Advanced users can verify a downloaded asset with <code>gh attestation verify &lt;file&gt; --repo alex-slovakia/alex-os</code>.
 3. Open your vault folder in the system file manager.
 4. Show hidden files if necessary.
 5. Create <code>.obsidian/plugins/alex-os/</code>.
@@ -69,6 +71,7 @@ Open **Settings → Alex OS** and set:
 - Project folders
 - Daily focus folder
 - Inspiration note
+- Book highlights folder
 - Journal root and index
 - Greeting name, density, and visible modules
 
@@ -76,7 +79,7 @@ The defaults use a numbered-folder convention, and the main source paths are edi
 
 Missing source notes are safe: the relevant card is hidden or shows a neutral empty state.
 
-Starter files are available in [examples](../examples/). For Daily Focus, prefer the dashboard’s **Set today’s focus** action so the note receives today’s exact local date.
+Starter files are available in [examples](../examples/), including an inspiration quote pool and a synthetic book-highlights note. Use at least two entries in each pool for daily changes. For Daily Focus, prefer the dashboard’s **Set today’s focus** action so the note receives today’s exact local date.
 
 ## Optional Calendar setup
 

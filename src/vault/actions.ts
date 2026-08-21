@@ -1,9 +1,8 @@
-import {
+import type {
   App,
   TAbstractFile,
-  TFile,
   TFolder,
-  type WorkspaceLeaf
+  WorkspaceLeaf
 } from "obsidian";
 
 import type { AlexOsSettings } from "../types";
@@ -24,6 +23,11 @@ import {
   type DailyFocusCandidate,
   type JournalCandidate
 } from "./pure";
+import {
+  collectConfiguredMarkdownFiles,
+  isVaultFile,
+  isVaultFolder,
+} from "./scoped-files";
 
 export type VaultActionSettings = Pick<
   AlexOsSettings,
@@ -61,7 +65,7 @@ async function ensureFolder(app: App, folderPath: string): Promise<TFolder> {
   for (const segment of normalized.split("/")) {
     currentPath = currentPath ? `${currentPath}/${segment}` : segment;
     const existing = app.vault.getAbstractFileByPath(currentPath);
-    if (existing instanceof TFolder) {
+    if (isVaultFolder(existing)) {
       currentFolder = existing;
       continue;
     }
@@ -111,12 +115,12 @@ export class VaultActions {
       throw new Error(`Vault path does not exist: ${requestedPath}`);
     }
 
-    if (target instanceof TFile) {
+    if (isVaultFile(target)) {
       await this.app.workspace.getLeaf(newLeaf).openFile(target);
       return;
     }
 
-    if (target instanceof TFolder) {
+    if (isVaultFolder(target)) {
       await this.revealFolder(target);
     }
   }
@@ -163,8 +167,10 @@ export class VaultActions {
   async createOrOpenDailyFocus(): Promise<void> {
     const createdAt = this.now();
     const dateKey = toLocalDateKey(createdAt);
-    const candidates: DailyFocusCandidate[] = this.app.vault
-      .getMarkdownFiles()
+    const candidates: DailyFocusCandidate[] = collectConfiguredMarkdownFiles(
+      this.app.vault,
+      [this.settings.dailyFocusFolder]
+    )
       .filter((file) => isPathInsideFolder(file.path, this.settings.dailyFocusFolder))
       .map((file) => ({
         path: file.path,
@@ -197,8 +203,10 @@ export class VaultActions {
   async createOrOpenJournal(): Promise<void> {
     const createdAt = this.now();
     const dateKey = toLocalDateKey(createdAt);
-    const candidates: JournalCandidate[] = this.app.vault
-      .getMarkdownFiles()
+    const candidates: JournalCandidate[] = collectConfiguredMarkdownFiles(
+      this.app.vault,
+      [this.settings.journalRoot]
+    )
       .filter((file) => isPathInsideFolder(file.path, this.settings.journalRoot))
       .map((file) => ({
         path: file.path,
@@ -261,7 +269,7 @@ export class VaultActions {
       return;
     }
 
-    this.app.workspace.revealLeaf(leaf);
+    await this.app.workspace.revealLeaf(leaf);
     if (canRevealInFolder(leaf.view)) {
       try {
         await leaf.view.revealInFolder(folder);
